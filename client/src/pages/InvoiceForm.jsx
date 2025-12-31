@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { Save, Send, Download, Plus, Trash2, ChevronDown, ChevronRight, Link as LinkIcon, X } from 'lucide-react';
+import { Save, Send, Download, Plus, Trash2, X, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui';
 import { invoices, quotations, clients as clientsApi, settings as settingsApi } from '../lib/api';
 
@@ -23,33 +23,29 @@ const terbilang = (amount) => {
     return numberToWords(Math.floor(amount)) + ' Rupiah';
 };
 
-// Sample clients for dropdown (will be replaced by API data)
-const sampleClients = [
-    { id: '1', name: 'CV SARI JAYA', contactName: 'Pak Reza', email: 'reza@sarijaya.com' },
-    { id: '2', name: 'PT MAJU BERSAMA', contactName: 'Ibu Sarah', email: 'sarah@majubersama.co.id' },
-    { id: '3', name: 'UD BERKAH SENTOSA', contactName: 'Pak Ahmad', email: 'ahmad@berkahsentosa.com' },
-];
-
 // Default company settings
 const defaultCompanySettings = {
-    companyName: 'PT SURYA GEMILANG PERKASA',
-    legalName: 'PT SURYA GEMILANG PERKASA',
-    address: 'Jl. Industri No. 45, Kawasan Industri MM2100',
-    city: 'Bekasi',
-    email: 'info@sgp.co.id',
-    phone: '+62 21 8970 1234',
+    companyName: 'PT SETIA HABA TEKNOLOGI',
+    legalName: 'PT Setia Haba Teknologi',
+    address: 'Jl. Melati III BSD Blok C8/21 Sektor 1.6, Rawabuntu',
+    city: 'Serpong, Tangerang Selatan 15318',
+    workshop: 'Jl Angsana 21, Rawabuntu, Serpong, Tangerang Selatan',
+    email: 'ptsetiahabateknologi@gmail.com',
+    phone: '021-70044184',
     quotationPrefix: 'SPG/',
-    quotationNextNum: 11,
+    quotationNextNum: 31,
     invoicePrefix: 'INV/',
     invoiceNextNum: 1,
     defaultTaxRate: 11,
-    bankName: 'BCA',
-    bankAccountNum: '123-456-7890',
-    bankAccountName: 'PT SURYA GEMILANG PERKASA',
-    signatureName: 'Budi Santoso',
-    defaultTerms: `1. Harga sudah termasuk PPN
-2. Barang akan dikirim setelah pembayaran dikonfirmasi
-3. Masa berlaku penawaran 30 hari`,
+    bankName: 'Bank rakyat Indonesia',
+    bankAccountNum: '0034 0100 1925 301',
+    bankAccountName: 'PT SETIA HABA TEKNOLOGI',
+    signatureName: 'Haikal Ahmed Al-Muzani',
+    defaultTerms: `1. Harga termasuk biaya antar Jakarta & termasuk PPN 11%
+2. Barang akan langsung dikirim, saat pembayaran sudah di konfirmasi
+3. Masa berlaku penawaran 1 (satu) bulan terhitung sejak tanggal penawaran dibuat
+4. Cara pembayaran : Transfer atau Cek ke no rekening tertera
+5. Garansi 1 (satu) tahun`,
 };
 
 export default function InvoiceForm() {
@@ -59,60 +55,54 @@ export default function InvoiceForm() {
     const [searchParams] = useSearchParams();
     const isNew = location.pathname.includes('/new');
 
-    // Check if converting from quotation
-    const fromQuotation = searchParams.get('from') === 'quotation';
-    const linkedQuotationRef = searchParams.get('ref');
-
     // Determine document type from URL
     const getDocType = () => {
         if (location.pathname.includes('/quotations')) return 'Quotation';
+        if (location.pathname.includes('/sph')) return 'SPH';
         return 'Invoice';
     };
     const docType = getDocType();
 
     // State for API data
     const [companySettings, setCompanySettings] = useState(defaultCompanySettings);
-    const [clientsList, setClientsList] = useState(sampleClients);
+    const [clientsList, setClientsList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [savedJustNow, setSavedJustNow] = useState(false);
 
     // Generate auto number based on settings
     const generateDocNumber = (settings) => {
-        const date = new Date();
-        const prefix = docType === 'Quotation' ? (settings.quotationPrefix || 'QT/') : (settings.invoicePrefix || 'INV/');
+        const year = new Date().getFullYear();
+        const prefix = docType === 'Quotation' ? (settings.quotationPrefix || 'SPG/') : (settings.invoicePrefix || 'INV/');
         const nextNum = docType === 'Quotation' ? (settings.quotationNextNum || 1) : (settings.invoiceNextNum || 1);
-        const year = date.getFullYear();
-        return `${prefix}${year}/${String(nextNum).padStart(4, '0')}`;
+        return `${String(nextNum).padStart(4, '0')}/${prefix}${year}`;
     };
 
     const [formData, setFormData] = useState({
         number: '',
         date: new Date().toISOString().split('T')[0],
-        projectName: '',
-        poNumber: '',
+        poNumber: '0071',
         clientId: '',
         selectedClient: null,
-        linkedQuotation: fromQuotation ? linkedQuotationRef : null,
         applyTax: true,
         taxRate: 11,
-        discountPercent: 0,
-        discount: 0,
         bankName: '',
         bankAccountNum: '',
         bankAccountName: '',
         signatureName: '',
         terms: '',
+        terbilangText: '',
     });
 
-    // Items with grouped structure
-    const [items, setItems] = useState([
+    // Grouped items structure
+    const [itemGroups, setItemGroups] = useState([
         {
             id: 1,
-            name: '',
+            name: 'PERALATAN UTAMA',
             expanded: true,
-            descriptions: [
-                { id: 101, model: '', description: '', qty: 1, unit: 'unit', rate: 0 }
+            items: [
+                { id: 101, model: 'MGP24X', description: 'Digital Mixer 24CH', qty: 1, unit: 'unit', rate: 36000000 }
             ]
         }
     ]);
@@ -138,20 +128,20 @@ export default function InvoiceForm() {
                         city: settingsData.city || defaultCompanySettings.city,
                         email: settingsData.email || defaultCompanySettings.email,
                         phone: settingsData.phone || defaultCompanySettings.phone,
+                        workshop: settingsData.workshop || defaultCompanySettings.workshop,
                         bankName: settingsData.bankAccounts?.[0]?.bankName || defaultCompanySettings.bankName,
                         bankAccountNum: settingsData.bankAccounts?.[0]?.accountNum || defaultCompanySettings.bankAccountNum,
                         bankAccountName: settingsData.bankAccounts?.[0]?.holderName || defaultCompanySettings.bankAccountName,
+                        signatureName: settingsData.signatureName || defaultCompanySettings.signatureName,
                         quotationPrefix: settingsData.quotationPrefix || defaultCompanySettings.quotationPrefix,
                         quotationNextNum: settingsData.quotationNextNum || defaultCompanySettings.quotationNextNum,
                         invoicePrefix: settingsData.invoicePrefix || defaultCompanySettings.invoicePrefix,
                         invoiceNextNum: settingsData.invoiceNextNum || defaultCompanySettings.invoiceNextNum,
                         defaultTaxRate: settingsData.defaultTaxRate || defaultCompanySettings.defaultTaxRate,
                         defaultTerms: settingsData.defaultTerms || defaultCompanySettings.defaultTerms,
-                        signatureName: settingsData.signatureName || defaultCompanySettings.signatureName,
                     };
                     setCompanySettings(mappedSettings);
 
-                    // Initialize form with settings data
                     if (isNew) {
                         setFormData(prev => ({
                             ...prev,
@@ -165,7 +155,6 @@ export default function InvoiceForm() {
                         }));
                     }
                 } else {
-                    // Use defaults
                     if (isNew) {
                         setFormData(prev => ({
                             ...prev,
@@ -192,6 +181,21 @@ export default function InvoiceForm() {
         fetchData();
     }, [isNew]);
 
+    // Calculate totals
+    const subtotal = itemGroups.reduce((sum, group) =>
+        sum + group.items.reduce((gSum, item) => gSum + (item.qty * item.rate), 0)
+        , 0);
+    const taxAmount = formData.applyTax ? subtotal * (formData.taxRate / 100) : 0;
+    const total = subtotal + taxAmount;
+
+    // Update terbilang when total changes
+    useEffect(() => {
+        setFormData(prev => ({
+            ...prev,
+            terbilangText: terbilang(total)
+        }));
+    }, [total]);
+
     // Filter clients based on search
     const filteredClients = clientsList.filter(c =>
         c.name?.toLowerCase().includes(clientSearch.toLowerCase()) ||
@@ -205,88 +209,65 @@ export default function InvoiceForm() {
         setShowClientDropdown(false);
     };
 
-    // Add new item group
-    const addItemGroup = () => {
+    // Group management
+    const addGroup = () => {
         const newId = Date.now();
-        setItems([...items, {
+        setItemGroups([...itemGroups, {
             id: newId,
             name: '',
             expanded: true,
-            descriptions: [{ id: newId + 1, model: '', description: '', qty: 1, unit: 'unit', rate: 0 }]
+            items: [{ id: newId + 1, model: '', description: '', qty: 1, unit: 'unit', rate: 0 }]
         }]);
     };
 
-    // Remove item group
-    const removeItemGroup = (groupId) => {
-        if (items.length > 1) {
-            setItems(items.filter(item => item.id !== groupId));
+    const removeGroup = (groupId) => {
+        if (itemGroups.length > 1) {
+            setItemGroups(itemGroups.filter(g => g.id !== groupId));
         }
     };
 
-    // Update item group name
-    const updateItemGroupName = (groupId, name) => {
-        setItems(items.map(item =>
-            item.id === groupId ? { ...item, name } : item
+    const updateGroupName = (groupId, name) => {
+        setItemGroups(itemGroups.map(g =>
+            g.id === groupId ? { ...g, name } : g
         ));
     };
 
-    // Toggle item group expand/collapse
-    const toggleItemGroup = (groupId) => {
-        setItems(items.map(item =>
-            item.id === groupId ? { ...item, expanded: !item.expanded } : item
+    const toggleGroup = (groupId) => {
+        setItemGroups(itemGroups.map(g =>
+            g.id === groupId ? { ...g, expanded: !g.expanded } : g
         ));
     };
 
-    // Add description to item group
-    const addDescription = (groupId) => {
-        const newDescId = Date.now();
-        setItems(items.map(item =>
-            item.id === groupId
+    // Item management
+    const addItem = (groupId) => {
+        const newId = Date.now();
+        setItemGroups(itemGroups.map(g =>
+            g.id === groupId
+                ? { ...g, items: [...g.items, { id: newId, model: '', description: '', qty: 1, unit: 'unit', rate: 0 }] }
+                : g
+        ));
+    };
+
+    const removeItem = (groupId, itemId) => {
+        setItemGroups(itemGroups.map(g =>
+            g.id === groupId
+                ? { ...g, items: g.items.filter(item => item.id !== itemId) }
+                : g
+        ));
+    };
+
+    const updateItem = (groupId, itemId, field, value) => {
+        setItemGroups(itemGroups.map(g =>
+            g.id === groupId
                 ? {
-                    ...item,
-                    descriptions: [...item.descriptions, {
-                        id: newDescId,
-                        model: '',
-                        description: '',
-                        qty: 1,
-                        unit: 'unit',
-                        rate: 0
-                    }]
-                }
-                : item
-        ));
-    };
-
-    // Remove description from item group
-    const removeDescription = (groupId, descId) => {
-        setItems(items.map(item =>
-            item.id === groupId
-                ? { ...item, descriptions: item.descriptions.filter(d => d.id !== descId) }
-                : item
-        ));
-    };
-
-    // Update description field
-    const updateDescription = (groupId, descId, field, value) => {
-        setItems(items.map(item =>
-            item.id === groupId
-                ? {
-                    ...item,
-                    descriptions: item.descriptions.map(d =>
-                        d.id === descId ? { ...d, [field]: value } : d
+                    ...g,
+                    items: g.items.map(item =>
+                        item.id === itemId ? { ...item, [field]: value } : item
                     )
                 }
-                : item
+                : g
         ));
     };
-
-    // Calculations
-    const subtotal = items.reduce((sum, group) =>
-        sum + group.descriptions.reduce((gSum, d) => gSum + (d.qty * d.rate), 0)
-        , 0);
-    const taxAmount = formData.applyTax ? subtotal * (formData.taxRate / 100) : 0;
-    const discountAmount = subtotal * (formData.discountPercent / 100);
-    const total = subtotal + taxAmount - discountAmount;
 
     // Save document handler
     const handleSave = async (status = 'draft') => {
@@ -300,14 +281,14 @@ export default function InvoiceForm() {
 
         try {
             // Flatten items for API
-            const flatItems = items.flatMap(group =>
-                group.descriptions.map(desc => ({
+            const flatItems = itemGroups.flatMap(group =>
+                group.items.map(item => ({
                     groupName: group.name,
-                    model: desc.model,
-                    description: desc.description,
-                    quantity: desc.qty,
-                    unit: desc.unit,
-                    unitPrice: desc.rate,
+                    model: item.model,
+                    description: item.description,
+                    quantity: item.qty,
+                    unit: item.unit,
+                    unitPrice: item.rate,
                 }))
             );
 
@@ -315,12 +296,10 @@ export default function InvoiceForm() {
                 clientId: formData.selectedClient.id,
                 issueDate: formData.date,
                 status: status,
-                projectName: formData.projectName,
                 poNumber: formData.poNumber,
-                notes: formData.projectName,
+                notes: formData.terms,
                 terms: formData.terms,
                 taxRate: formData.applyTax ? formData.taxRate : 0,
-                discountPercent: formData.discountPercent,
                 bankAccount: `${formData.bankName} - ${formData.bankAccountNum}`,
                 signatureName: formData.signatureName,
                 items: flatItems,
@@ -341,6 +320,9 @@ export default function InvoiceForm() {
                 }
                 navigate('/documents?tab=invoices');
             }
+
+            setSavedJustNow(true);
+            setTimeout(() => setSavedJustNow(false), 3000);
         } catch (err) {
             console.error('Failed to save:', err);
             setError(err.message || 'Failed to save document');
@@ -350,11 +332,12 @@ export default function InvoiceForm() {
     };
 
     const formatIDR = (amount) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        return new Intl.NumberFormat('id-ID', { style: 'decimal', minimumFractionDigits: 0 }).format(amount);
     };
 
-    const formatNumber = (amount) => {
-        return new Intl.NumberFormat('id-ID').format(amount);
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     if (loading) {
@@ -367,26 +350,21 @@ export default function InvoiceForm() {
 
     return (
         <div className="flex flex-col gap-6 pb-10">
-            {/* Error Banner */}
-            {error && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
-                    <span>{error}</span>
-                    <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
-                        <X size={16} />
-                    </button>
-                </div>
-            )}
-
             {/* Header with breadcrumb and actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm">
                     <Link to="/documents" className="text-text-secondary hover:text-primary">{docType}s</Link>
                     <span className="text-text-secondary">/</span>
                     <span className="text-text-main dark:text-white font-medium">
-                        {isNew ? `New ${docType}` : formData.number}
+                        New {docType}
                     </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    {savedJustNow && (
+                        <span className="text-green-500 text-sm flex items-center gap-1">
+                            <Check size={14} /> Saved just now
+                        </span>
+                    )}
                     <Button
                         variant="secondary"
                         icon={Save}
@@ -401,30 +379,25 @@ export default function InvoiceForm() {
                         onClick={() => handleSave('sent')}
                         disabled={saving}
                     >
-                        Send
+                        Send Email
                     </Button>
                     <Button
                         icon={Download}
                         onClick={() => handleSave('pending')}
                         disabled={saving}
                     >
-                        Save & Continue
+                        Download PDF
                     </Button>
                 </div>
             </div>
 
-            {/* Linked Quotation Banner */}
-            {formData.linkedQuotation && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                    <LinkIcon size={18} className="text-blue-600 dark:text-blue-400" />
-                    <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                            Linked Quotation: <span className="font-bold">{formData.linkedQuotation}</span>
-                        </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                            This invoice was created from a quotation. All items and details have been copied.
-                        </p>
-                    </div>
+            {/* Error Banner */}
+            {error && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
+                    <span>{error}</span>
+                    <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+                        <X size={16} />
+                    </button>
                 </div>
             )}
 
@@ -441,138 +414,112 @@ export default function InvoiceForm() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">No. {docType}</label>
-                                    <input
-                                        type="text"
-                                        value={formData.number}
-                                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                                        placeholder="SPG/2025/0001"
-                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                    />
-                                    <p className="text-xs text-text-secondary mt-1">Auto-generated, can be edited</p>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Date</label>
+                                    <label className="block text-xs font-medium text-text-secondary mb-2">DATE</label>
                                     <input
                                         type="date"
                                         value={formData.date}
                                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-text-secondary mb-2">NO SPH</label>
+                                    <input
+                                        type="text"
+                                        value={formData.number}
+                                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                                        placeholder="0031/SPG/2025"
+                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Project Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.projectName}
-                                        onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
-                                        placeholder="Sound System Installation"
-                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">PO Number</label>
-                                    <input
-                                        type="text"
-                                        value={formData.poNumber}
-                                        onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
-                                        placeholder="PO-2025-001"
-                                        className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                    />
-                                </div>
+                            {/* Customer Selection */}
+                            <div>
+                                <label className="block text-xs font-medium text-text-secondary mb-2">CUSTOMER</label>
+                                {formData.selectedClient ? (
+                                    <div className="flex items-center justify-between p-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
+                                        <span className="text-text-main dark:text-white text-sm">
+                                            {formData.selectedClient.name} / UP: {formData.selectedClient.contactName || 'Contact'}
+                                        </span>
+                                        <button
+                                            onClick={() => setFormData({ ...formData, clientId: '', selectedClient: null })}
+                                            className="text-text-secondary hover:text-red-500"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="relative flex gap-2">
+                                        <div className="flex-1 relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Search clients..."
+                                                value={clientSearch}
+                                                onChange={(e) => {
+                                                    setClientSearch(e.target.value);
+                                                    setShowClientDropdown(true);
+                                                }}
+                                                onFocus={() => setShowClientDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                            />
+                                            {showClientDropdown && filteredClients.length > 0 && (
+                                                <div className="absolute z-20 w-full mt-1 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                                    {filteredClients.map(client => (
+                                                        <button
+                                                            key={client.id}
+                                                            onClick={() => selectClient(client)}
+                                                            className="w-full px-4 py-3 text-left hover:bg-primary/5 border-b border-border-light dark:border-border-dark last:border-0"
+                                                        >
+                                                            <p className="font-medium text-text-main dark:text-white text-sm">{client.name}</p>
+                                                            <p className="text-xs text-text-secondary">UP: {client.contactName}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Link to="/clients" className="px-4 py-2.5 text-primary text-sm font-medium hover:bg-primary/5 rounded-lg border border-primary/20">
+                                            + New
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Client Card */}
-                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                        <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2 mb-4">
-                            <span className="text-primary">👤</span> Client
-                        </h3>
-
-                        {formData.selectedClient ? (
-                            <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                                <div>
-                                    <p className="font-semibold text-text-main dark:text-white">{formData.selectedClient.name}</p>
-                                    <p className="text-sm text-text-secondary">{formData.selectedClient.contactName}</p>
-                                    <p className="text-xs text-text-secondary">{formData.selectedClient.email}</p>
-                                </div>
-                                <button
-                                    onClick={() => setFormData({ ...formData, clientId: '', selectedClient: null })}
-                                    className="px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                >
-                                    Change
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Search clients by name..."
-                                    value={clientSearch}
-                                    onChange={(e) => {
-                                        setClientSearch(e.target.value);
-                                        setShowClientDropdown(true);
-                                    }}
-                                    onFocus={() => setShowClientDropdown(true)}
-                                    onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                                {showClientDropdown && filteredClients.length > 0 && (
-                                    <div className="absolute z-20 w-full mt-1 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                        {filteredClients.map(client => (
-                                            <button
-                                                key={client.id}
-                                                onClick={() => selectClient(client)}
-                                                className="w-full px-4 py-3 text-left hover:bg-primary/5 border-b border-border-light dark:border-border-dark last:border-0"
-                                            >
-                                                <p className="font-medium text-text-main dark:text-white text-sm">{client.name}</p>
-                                                <p className="text-xs text-text-secondary">{client.contactName} • {client.email}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Items Card */}
+                    {/* Items Card with Groups */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2">
-                                <span className="text-primary">📦</span> Line Items
+                                <span className="text-primary">📦</span> Items
                             </h3>
                             <button
-                                onClick={addItemGroup}
-                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                onClick={addGroup}
+                                className="text-primary text-sm font-medium flex items-center gap-1 hover:bg-primary/5 px-3 py-1.5 rounded-lg"
                             >
                                 <Plus size={14} /> Add Group
                             </button>
                         </div>
 
+                        {/* Item Groups */}
                         <div className="space-y-4">
-                            {items.map((group, groupIndex) => (
+                            {itemGroups.map((group) => (
                                 <div key={group.id} className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden">
                                     {/* Group Header */}
-                                    <div className="flex items-center gap-2 p-3 bg-background-light dark:bg-background-dark">
-                                        <button onClick={() => toggleItemGroup(group.id)} className="text-text-secondary hover:text-primary">
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-background-light dark:bg-background-dark">
+                                        <button onClick={() => toggleGroup(group.id)} className="text-text-secondary hover:text-primary">
                                             {group.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                         </button>
                                         <input
                                             type="text"
                                             value={group.name}
-                                            onChange={(e) => updateItemGroupName(group.id, e.target.value)}
-                                            placeholder={`Group ${groupIndex + 1} (e.g., Speaker System)`}
-                                            className="flex-1 px-2 py-1 bg-transparent text-sm font-medium text-text-main dark:text-white focus:outline-none"
+                                            onChange={(e) => updateGroupName(group.id, e.target.value)}
+                                            placeholder="Group Name (e.g. PERALATAN UTAMA)"
+                                            className="flex-1 bg-transparent text-sm font-semibold text-text-main dark:text-white focus:outline-none"
                                         />
-                                        {items.length > 1 && (
-                                            <button
-                                                onClick={() => removeItemGroup(group.id)}
-                                                className="text-text-secondary hover:text-red-500"
-                                            >
+                                        {itemGroups.length > 1 && (
+                                            <button onClick={() => removeGroup(group.id)} className="text-text-secondary hover:text-red-500">
                                                 <Trash2 size={14} />
                                             </button>
                                         )}
@@ -580,298 +527,246 @@ export default function InvoiceForm() {
 
                                     {/* Group Items */}
                                     {group.expanded && (
-                                        <div className="p-3 space-y-2">
-                                            {/* Mobile: Stacked Layout */}
-                                            <div className="block md:hidden space-y-3">
-                                                {group.descriptions.map((desc) => (
-                                                    <div key={desc.id} className="p-3 bg-background-light dark:bg-background-dark rounded-lg space-y-2">
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={desc.model}
-                                                                onChange={(e) => updateDescription(group.id, desc.id, 'model', e.target.value)}
-                                                                placeholder="Model"
-                                                                className="w-1/3 px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                value={desc.description}
-                                                                onChange={(e) => updateDescription(group.id, desc.id, 'description', e.target.value)}
-                                                                placeholder="Description"
-                                                                className="flex-1 px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                            />
-                                                        </div>
-                                                        <div className="flex gap-2 items-center">
-                                                            <input
-                                                                type="number"
-                                                                value={desc.qty}
-                                                                onChange={(e) => updateDescription(group.id, desc.id, 'qty', parseInt(e.target.value) || 0)}
-                                                                className="w-16 px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
-                                                            />
-                                                            <select
-                                                                value={desc.unit}
-                                                                onChange={(e) => updateDescription(group.id, desc.id, 'unit', e.target.value)}
-                                                                className="w-20 px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                            >
-                                                                <option value="unit">unit</option>
-                                                                <option value="set">set</option>
-                                                                <option value="pcs">pcs</option>
-                                                                <option value="lot">lot</option>
-                                                            </select>
-                                                            <input
-                                                                type="number"
-                                                                value={desc.rate}
-                                                                onChange={(e) => updateDescription(group.id, desc.id, 'rate', parseFloat(e.target.value) || 0)}
-                                                                placeholder="Rate"
-                                                                className="flex-1 px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                            />
-                                                            <span className="text-xs font-medium text-primary min-w-[80px] text-right">
-                                                                {formatIDR(desc.qty * desc.rate)}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => removeDescription(group.id, desc.id)}
-                                                                className="text-text-secondary hover:text-red-500"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Desktop: Table Layout */}
-                                            <div className="hidden md:block">
-                                                <table className="w-full text-xs">
-                                                    <thead>
-                                                        <tr className="text-text-secondary">
-                                                            <th className="text-left pb-2 font-medium">Model</th>
-                                                            <th className="text-left pb-2 font-medium">Description</th>
-                                                            <th className="text-center pb-2 font-medium w-16">Qty</th>
-                                                            <th className="text-center pb-2 font-medium w-20">Unit</th>
-                                                            <th className="text-right pb-2 font-medium w-28">Rate</th>
-                                                            <th className="text-right pb-2 font-medium w-28">Amount</th>
-                                                            <th className="w-8"></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {group.descriptions.map((desc) => (
-                                                            <tr key={desc.id} className="border-t border-border-light dark:border-border-dark">
-                                                                <td className="py-2 pr-2">
-                                                                    <input
-                                                                        type="text"
-                                                                        value={desc.model}
-                                                                        onChange={(e) => updateDescription(group.id, desc.id, 'model', e.target.value)}
-                                                                        placeholder="SR-S4S"
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-2 pr-2">
-                                                                    <input
-                                                                        type="text"
-                                                                        value={desc.description}
-                                                                        onChange={(e) => updateDescription(group.id, desc.id, 'description', e.target.value)}
-                                                                        placeholder="Variable Dispersion Speaker"
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-2 pr-2">
+                                        <div className="p-3">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="text-text-secondary text-xs">
+                                                        <th className="text-left pb-2 font-medium w-24">MODEL</th>
+                                                        <th className="text-left pb-2 font-medium">DESKRIPSI</th>
+                                                        <th className="text-center pb-2 font-medium w-20">JML/SAT</th>
+                                                        <th className="text-right pb-2 font-medium w-28">HARGA</th>
+                                                        <th className="w-8"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {group.items.map((item) => (
+                                                        <tr key={item.id}>
+                                                            <td className="py-1.5 pr-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.model}
+                                                                    onChange={(e) => updateItem(group.id, item.id, 'model', e.target.value)}
+                                                                    placeholder="MGP24X"
+                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                />
+                                                            </td>
+                                                            <td className="py-1.5 pr-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.description}
+                                                                    onChange={(e) => updateItem(group.id, item.id, 'description', e.target.value)}
+                                                                    placeholder="Digital Mixer 24CH"
+                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                />
+                                                            </td>
+                                                            <td className="py-1.5 pr-2">
+                                                                <div className="flex items-center gap-1">
                                                                     <input
                                                                         type="number"
-                                                                        value={desc.qty}
-                                                                        onChange={(e) => updateDescription(group.id, desc.id, 'qty', parseInt(e.target.value) || 0)}
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
+                                                                        value={item.qty}
+                                                                        onChange={(e) => updateItem(group.id, item.id, 'qty', parseInt(e.target.value) || 0)}
+                                                                        className="w-10 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
                                                                     />
-                                                                </td>
-                                                                <td className="py-2 pr-2">
                                                                     <select
-                                                                        value={desc.unit}
-                                                                        onChange={(e) => updateDescription(group.id, desc.id, 'unit', e.target.value)}
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                        value={item.unit}
+                                                                        onChange={(e) => updateItem(group.id, item.id, 'unit', e.target.value)}
+                                                                        className="w-12 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
                                                                     >
                                                                         <option value="unit">unit</option>
                                                                         <option value="set">set</option>
                                                                         <option value="pcs">pcs</option>
                                                                         <option value="lot">lot</option>
                                                                     </select>
-                                                                </td>
-                                                                <td className="py-2 pr-2">
-                                                                    <input
-                                                                        type="number"
-                                                                        value={desc.rate}
-                                                                        onChange={(e) => updateDescription(group.id, desc.id, 'rate', parseFloat(e.target.value) || 0)}
-                                                                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-right text-text-main dark:text-white"
-                                                                    />
-                                                                </td>
-                                                                <td className="py-2 pr-2 text-right font-medium text-primary">
-                                                                    {formatIDR(desc.qty * desc.rate)}
-                                                                </td>
-                                                                <td className="py-2">
-                                                                    <button
-                                                                        onClick={() => removeDescription(group.id, desc.id)}
-                                                                        className="text-text-secondary hover:text-red-500"
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-1.5 pr-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.rate ? formatIDR(item.rate) : ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value.replace(/[^\d]/g, '');
+                                                                        updateItem(group.id, item.id, 'rate', parseInt(val) || 0);
+                                                                    }}
+                                                                    placeholder="36,000,000"
+                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-right text-text-main dark:text-white"
+                                                                />
+                                                            </td>
+                                                            <td className="py-1.5">
+                                                                <button onClick={() => removeItem(group.id, item.id)} className="text-text-secondary hover:text-red-500">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                             <button
-                                                onClick={() => addDescription(group.id)}
-                                                className="w-full py-2 text-xs text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
+                                                onClick={() => addItem(group.id)}
+                                                className="w-full mt-2 py-2 text-xs text-text-secondary hover:text-primary hover:bg-primary/5 rounded border border-dashed border-border-light dark:border-border-dark flex items-center justify-center gap-1"
                                             >
-                                                + Add Item
+                                                <Plus size={12} /> Add New Item
                                             </button>
                                         </div>
                                     )}
                                 </div>
                             ))}
                         </div>
+
+                        {/* Apply PPN Checkbox */}
+                        <div className="mt-4 flex items-center gap-2">
+                            <button
+                                onClick={() => setFormData({ ...formData, applyTax: !formData.applyTax })}
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.applyTax ? 'bg-primary border-primary text-white' : 'border-border-light dark:border-border-dark'
+                                    }`}
+                            >
+                                {formData.applyTax && <Check size={12} />}
+                            </button>
+                            <span className="text-sm text-text-main dark:text-white">Apply PPN {formData.taxRate}%</span>
+                        </div>
                     </div>
 
-                    {/* Terms & Bank Card */}
+                    {/* Terbilang Card */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                        <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2 mb-4">
-                            <span className="text-primary">💳</span> Payment & Terms
-                        </h3>
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Terbilang (In Words)</label>
+                        <textarea
+                            value={formData.terbilangText}
+                            onChange={(e) => setFormData({ ...formData, terbilangText: e.target.value })}
+                            rows={2}
+                            className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white resize-none"
+                        />
+                    </div>
 
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Bank Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.bankName}
-                                        onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Account Number</label>
-                                    <input
-                                        type="text"
-                                        value={formData.bankAccountNum}
-                                        onChange={(e) => setFormData({ ...formData, bankAccountNum: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Account Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.bankAccountName}
-                                        onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                    />
-                                </div>
-                            </div>
-
+                    {/* Bank Details Card */}
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-medium text-text-secondary mb-2">Terms & Conditions</label>
-                                <textarea
-                                    value={formData.terms}
-                                    onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
-                                    rows={4}
-                                    className="w-full px-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white resize-none"
+                                <label className="block text-xs font-medium text-text-secondary mb-2">Bank Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.bankName}
+                                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                 />
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">Signature Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.signatureName}
-                                        onChange={(e) => setFormData({ ...formData, signatureName: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                    />
-                                </div>
-                                <div className="flex items-end gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.applyTax}
-                                            onChange={(e) => setFormData({ ...formData, applyTax: e.target.checked })}
-                                            className="w-4 h-4 text-primary border-border-light rounded focus:ring-primary"
-                                        />
-                                        <span className="text-sm text-text-main dark:text-white">Apply Tax ({formData.taxRate}%)</span>
-                                    </label>
-                                </div>
+                            <div>
+                                <label className="block text-xs font-medium text-text-secondary mb-2">Account Number (AC)</label>
+                                <input
+                                    type="text"
+                                    value={formData.bankAccountNum}
+                                    onChange={(e) => setFormData({ ...formData, bankAccountNum: e.target.value })}
+                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                />
                             </div>
+                        </div>
+                        <div className="mt-4">
+                            <label className="block text-xs font-medium text-text-secondary mb-2">Account Name (AN)</label>
+                            <input
+                                type="text"
+                                value={formData.bankAccountName}
+                                onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
+                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Preview Section */}
-                <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 h-fit sticky top-6">
-                    <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2 mb-4">
-                        <span className="text-primary">👁️</span> Live Preview
-                    </h3>
+                {/* Preview Section - Matching Original Design */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2">
+                            <span className="text-primary">👁️</span> Live Preview
+                        </h3>
+                        <span className="text-xs text-text-secondary bg-background-light dark:bg-background-dark px-2 py-1 rounded">
+                            A4 Format
+                        </span>
+                    </div>
 
-                    {/* Document Preview */}
-                    <div className="bg-white rounded-lg shadow-lg overflow-hidden text-slate-700 text-[11px]" style={{ aspectRatio: '210/297' }}>
-                        <div className="p-6 h-full flex flex-col">
-                            {/* Header */}
-                            <div className="flex justify-between items-start pb-4 border-b-2 border-primary">
-                                <div>
-                                    <h1 className="text-lg font-bold text-primary">{companySettings.companyName}</h1>
-                                    <p className="text-[10px] text-slate-500">{companySettings.address}</p>
-                                    <p className="text-[10px] text-slate-500">{companySettings.city}</p>
-                                    <p className="text-[10px] text-slate-500">{companySettings.email} | {companySettings.phone}</p>
+                    {/* Document Preview - Matching Export Format */}
+                    <div className="bg-white rounded-lg shadow-lg overflow-hidden text-slate-700 border" style={{ fontSize: '9px' }}>
+                        <div className="p-5">
+                            {/* Header with Logo & Company Info */}
+                            <div className="flex gap-4 items-start pb-3 border-b-2 border-blue-800">
+                                <div className="flex-shrink-0">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
+                                        <span className="text-white font-bold text-lg">SHT</span>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <h2 className="text-xl font-bold text-slate-800">{docType.toUpperCase()}</h2>
-                                    <p className="font-semibold text-primary">{formData.number || 'SPG/2025/0001'}</p>
-                                    <p className="text-slate-500">Date: {formData.date}</p>
+                                <div className="flex-1">
+                                    <h1 className="text-xl font-bold text-blue-800">{companySettings.companyName}</h1>
+                                    <p className="text-[8px] text-slate-600">Office: {companySettings.address}</p>
+                                    <p className="text-[8px] text-slate-600">{companySettings.city}</p>
+                                    <p className="text-[8px] text-slate-600">Workshop: {companySettings.workshop}</p>
+                                    <p className="text-[8px] text-slate-600">Email: {companySettings.email}</p>
+                                    <p className="text-[8px] text-slate-600">Telp/Fax: {companySettings.phone}</p>
+                                </div>
+                                <div className="text-right text-[8px]">
+                                    <table className="border border-slate-300">
+                                        <tbody>
+                                            <tr>
+                                                <td className="border border-slate-300 px-2 py-1 font-medium bg-slate-50">DATE</td>
+                                                <td className="border border-slate-300 px-2 py-1">{formatDate(formData.date)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-slate-300 px-2 py-1 font-medium bg-slate-50">NO SPH</td>
+                                                <td className="border border-slate-300 px-2 py-1">{formData.number}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
-                            {/* Client Info */}
-                            <div className="py-3 border-b border-slate-200">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wide">Bill To</p>
-                                <p className="font-bold">{formData.selectedClient?.name || 'Select Client'}</p>
-                                <p className="text-slate-500">{formData.selectedClient?.contactName || '-'}</p>
-                                {formData.projectName && <p className="text-slate-500 mt-1">Project: {formData.projectName}</p>}
+                            {/* Customer Bar */}
+                            <div className="mt-3">
+                                <table className="w-full border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td className="bg-blue-800 text-white px-3 py-1.5 font-bold w-24" style={{ fontSize: '10px' }}>CUSTOMER</td>
+                                            <td className="bg-blue-100 px-3 py-1.5 text-blue-800 font-medium" style={{ fontSize: '10px' }}>
+                                                {formData.selectedClient?.name || 'Select Customer'} / UP : {formData.selectedClient?.contactName || '-'}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p className="text-[8px] text-slate-600 mt-2">
+                                    Dengan ini kami sampaikan Rincian order PO : {formData.poNumber} Sebagai berikut :
+                                </p>
                             </div>
 
                             {/* Items Table */}
-                            <div className="flex-1 overflow-hidden py-3">
-                                <table className="w-full text-[10px]">
+                            <div className="mt-3">
+                                <table className="w-full border-collapse text-[8px]">
                                     <thead>
-                                        <tr className="border-b-2 border-primary text-left">
-                                            <th className="py-1 font-semibold">Description</th>
-                                            <th className="py-1 font-semibold text-center w-12">Qty</th>
-                                            <th className="py-1 font-semibold text-right w-20">Rate</th>
-                                            <th className="py-1 font-semibold text-right w-24">Amount</th>
+                                        <tr className="bg-blue-800 text-white">
+                                            <th className="border border-blue-800 px-2 py-1.5 text-left font-bold">MODEL</th>
+                                            <th className="border border-blue-800 px-2 py-1.5 text-left font-bold">DESKRIPSI</th>
+                                            <th className="border border-blue-800 px-2 py-1.5 text-center font-bold w-14">JML SAT</th>
+                                            <th className="border border-blue-800 px-2 py-1.5 text-right font-bold w-20">HARGA</th>
+                                            <th className="border border-blue-800 px-2 py-1.5 text-right font-bold w-24">TOTAL HARGA</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map(group => (
+                                        {itemGroups.map(group => (
                                             <>
                                                 {group.name && (
-                                                    <tr key={`group-${group.id}`} className="bg-slate-50">
-                                                        <td colSpan={4} className="py-1 font-semibold text-primary">{group.name}</td>
+                                                    <tr key={`group-${group.id}`}>
+                                                        <td colSpan={5} className="border border-slate-300 px-2 py-1 font-bold text-slate-800 bg-slate-50">
+                                                            {group.name}
+                                                        </td>
                                                     </tr>
                                                 )}
-                                                {group.descriptions.slice(0, 3).map(desc => (
-                                                    <tr key={desc.id} className="border-b border-slate-100">
-                                                        <td className="py-1">
-                                                            {desc.model && <span className="font-medium">{desc.model}</span>}
-                                                            {desc.model && desc.description && ' - '}
-                                                            {desc.description}
-                                                        </td>
-                                                        <td className="py-1 text-center">{desc.qty} {desc.unit}</td>
-                                                        <td className="py-1 text-right">{formatNumber(desc.rate)}</td>
-                                                        <td className="py-1 text-right font-medium">{formatNumber(desc.qty * desc.rate)}</td>
+                                                {group.items.slice(0, 5).map(item => (
+                                                    <tr key={item.id}>
+                                                        <td className="border border-slate-300 px-2 py-1">{item.model}</td>
+                                                        <td className="border border-slate-300 px-2 py-1">{item.description}</td>
+                                                        <td className="border border-slate-300 px-2 py-1 text-center">{item.qty} {item.unit}</td>
+                                                        <td className="border border-slate-300 px-2 py-1 text-right">Rp{formatIDR(item.rate)}</td>
+                                                        <td className="border border-slate-300 px-2 py-1 text-right">{formatIDR(item.qty * item.rate)}</td>
                                                     </tr>
                                                 ))}
-                                                {group.descriptions.length > 3 && (
-                                                    <tr key={`more-${group.id}`}>
-                                                        <td colSpan={4} className="py-1 text-center text-slate-400 italic">
-                                                            +{group.descriptions.length - 3} more items...
+                                                {group.items.length > 5 && (
+                                                    <tr>
+                                                        <td colSpan={5} className="border border-slate-300 px-2 py-1 text-center text-slate-400 italic">
+                                                            +{group.items.length - 5} more items...
                                                         </td>
                                                     </tr>
                                                 )}
@@ -881,53 +776,67 @@ export default function InvoiceForm() {
                                 </table>
                             </div>
 
-                            {/* Totals */}
-                            <div className="border-t-2 border-primary pt-2">
-                                <div className="flex justify-end">
-                                    <div className="w-48 space-y-1 text-[10px]">
-                                        <div className="flex justify-between">
-                                            <span>Subtotal</span>
-                                            <span className="font-medium">{formatIDR(subtotal)}</span>
-                                        </div>
-                                        {formData.applyTax && (
-                                            <div className="flex justify-between">
-                                                <span>PPN ({formData.taxRate}%)</span>
-                                                <span>{formatIDR(taxAmount)}</span>
-                                            </div>
-                                        )}
-                                        {formData.discountPercent > 0 && (
-                                            <div className="flex justify-between text-green-600">
-                                                <span>Discount ({formData.discountPercent}%)</span>
-                                                <span>-{formatIDR(discountAmount)}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex justify-between pt-1 border-t border-slate-300 font-bold text-primary">
-                                            <span>TOTAL</span>
-                                            <span>{formatIDR(total)}</span>
-                                        </div>
+                            {/* Terms & Totals Side by Side */}
+                            <div className="mt-3 grid grid-cols-2 gap-4">
+                                <div className="text-[7px]">
+                                    <p className="font-bold text-slate-800 mb-1">Syarat dan Ketentuan:</p>
+                                    <div className="text-slate-600 whitespace-pre-line leading-relaxed">
+                                        {formData.terms}
                                     </div>
+                                </div>
+                                <div>
+                                    <table className="w-full text-[8px] border-collapse">
+                                        <tbody>
+                                            <tr>
+                                                <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">TOTAL</td>
+                                                <td className="border border-slate-300 px-2 py-1 text-right">Rp</td>
+                                                <td className="border border-slate-300 px-2 py-1 text-right font-medium">{formatIDR(subtotal)}</td>
+                                            </tr>
+                                            {formData.applyTax && (
+                                                <tr>
+                                                    <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">PPN {formData.taxRate}%</td>
+                                                    <td className="border border-slate-300 px-2 py-1 text-right">Rp</td>
+                                                    <td className="border border-slate-300 px-2 py-1 text-right">{formatIDR(taxAmount)}</td>
+                                                </tr>
+                                            )}
+                                            <tr className="bg-yellow-100">
+                                                <td className="border border-slate-300 px-2 py-1.5 font-bold">Grand Total</td>
+                                                <td className="border border-slate-300 px-2 py-1.5 text-right font-bold">Rp</td>
+                                                <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-blue-800">{formatIDR(total)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
-                            {/* Terbilang */}
-                            <div className="border-t-2 border-primary pt-2 mt-2">
-                                <p className="text-[10px]">
-                                    <span className="font-bold text-primary">Terbilang :</span>
-                                    <span className="ml-2 italic">{terbilang(total)}</span>
-                                </p>
+                            {/* Terbilang Bar */}
+                            <div className="mt-3">
+                                <table className="w-full border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td className="bg-blue-800 text-white px-3 py-2 font-bold w-20" style={{ fontSize: '9px' }}>Terbilang :</td>
+                                            <td className="bg-blue-100 px-3 py-2 italic text-blue-800" style={{ fontSize: '9px' }}>
+                                                {formData.terbilangText}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
                             {/* Bank & Signature */}
-                            <div className="flex justify-between items-end pt-4 mt-auto">
-                                <div className="text-[10px]">
-                                    <p className="font-medium">{formData.bankName}</p>
+                            <div className="mt-4 flex justify-between items-end text-[8px]">
+                                <div>
+                                    <p className="font-medium text-slate-800">{formData.bankName}</p>
                                     <p>AN : <span className="font-semibold">{formData.bankAccountName}</span></p>
-                                    <p>AC : <span className="font-medium">{formData.bankAccountNum}</span></p>
+                                    <p>AC : <span>{formData.bankAccountNum}</span></p>
                                 </div>
-                                <div className="text-center text-[10px]">
-                                    <p className="mb-8">Hormat Kami</p>
-                                    <p className="font-bold">{companySettings.companyName}</p>
-                                    <p className="font-semibold border-t border-slate-300 pt-1 mt-1">{formData.signatureName}</p>
+                                <div className="text-center">
+                                    <p className="mb-1">Hormat Kami</p>
+                                    <p className="font-bold text-slate-800">{companySettings.legalName}</p>
+                                    <div className="my-2 mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
+                                        <span className="text-white font-bold text-sm">SHT</span>
+                                    </div>
+                                    <p className="font-medium border-t border-slate-300 pt-1">{formData.signatureName}</p>
                                 </div>
                             </div>
                         </div>
