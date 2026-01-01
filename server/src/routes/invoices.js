@@ -89,12 +89,21 @@ router.post('/', async (req, res) => {
         const settings = await prisma.companySettings.findFirst();
         const year = new Date().getFullYear();
         const month = String(new Date().getMonth() + 1).padStart(2, '0');
-        const nextNum = settings?.invoiceNextNum || 1;
+        let nextNum = settings?.invoiceNextNum || 1;
         const padding = settings?.invoicePadding || 5;
         const prefix = (settings?.invoicePrefix || 'INV/{YYYY}/{MM}/')
             .replace('{YYYY}', year)
             .replace('{MM}', month);
-        const invoiceNumber = `${prefix}${String(nextNum).padStart(padding, '0')}`;
+
+        let invoiceNumber;
+        while (true) {
+            invoiceNumber = `${prefix}${String(nextNum).padStart(padding, '0')}`;
+            const existing = await prisma.invoice.findUnique({
+                where: { invoiceNumber }
+            });
+            if (!existing) break;
+            nextNum++;
+        }
 
         // Create invoice with items
         const invoice = await prisma.invoice.create({
@@ -117,8 +126,11 @@ router.post('/', async (req, res) => {
                 signatureName,
                 items: {
                     create: items.map(item => ({
+                        groupName: item.groupName || null,
+                        model: item.model || null,
                         description: item.description,
                         quantity: item.quantity,
+                        unit: item.unit || 'unit',
                         rate: item.rate,
                         amount: item.quantity * item.rate
                     }))
@@ -132,6 +144,13 @@ router.post('/', async (req, res) => {
             await prisma.companySettings.update({
                 where: { id: settings.id },
                 data: { invoiceNextNum: nextNum + 1 }
+            });
+        } else {
+            await prisma.companySettings.create({
+                data: {
+                    companyName: 'My Company',
+                    invoiceNextNum: 2
+                }
             });
         }
 
@@ -148,33 +167,61 @@ router.put('/:id', async (req, res) => {
         const { items, ...data } = req.body;
 
         // Recalculate if items changed
-        if (items) {
-            const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-            const tax = data.taxRate || 11;
-            data.subtotal = subtotal;
-            data.taxAmount = subtotal * (tax / 100);
-            data.total = subtotal + data.taxAmount - (data.discount || 0);
+        const updatedInvoice = await prisma.$transaction(async (tx) => {
+            // Clean up data for update - ensure Date objects for dates
+            if (data.issueDate) data.issueDate = new Date(data.issueDate);
+            if (data.dueDate) data.dueDate = new Date(data.dueDate);
 
-            // Delete old items and create new
-            await prisma.invoiceItem.deleteMany({ where: { invoiceId: req.params.id } });
-            await prisma.invoiceItem.createMany({
-                data: items.map(item => ({
-                    invoiceId: req.params.id,
-                    description: item.description,
-                    quantity: item.quantity,
-                    rate: item.rate,
-                    amount: item.quantity * item.rate
-                }))
+            if (items) {
+                const subtotal = items.reduce((sum, item) => {
+                    const rate = item.rate || item.unitPrice || 0;
+                    const qty = item.quantity || 1;
+                    return sum + (qty * rate);
+                }, 0);
+
+                const tax = data.taxRate || 11;
+                data.subtotal = subtotal;
+
+                // Fix: Treat discount as Percentage (like Create)
+                const discountPercent = data.discount || 0;
+                const discountAmount = subtotal * (discountPercent / 100);
+
+                // Fix: Tax is (Subtotal - Discount) * TaxRate
+                data.taxAmount = (subtotal - discountAmount) * (tax / 100);
+
+                // Fix: Save Discount AMOUNT to DB
+                data.discount = discountAmount;
+
+                data.total = subtotal - discountAmount + data.taxAmount;
+
+                // Delete old items and create new
+                await tx.invoiceItem.deleteMany({ where: { invoiceId: req.params.id } });
+                await tx.invoiceItem.createMany({
+                    data: items.map(item => {
+                        const rate = item.rate || item.unitPrice || 0;
+                        const qty = item.quantity || 1;
+                        return {
+                            invoiceId: req.params.id,
+                            groupName: item.groupName || null,
+                            model: item.model || null,
+                            description: item.description || '',
+                            quantity: qty,
+                            unit: item.unit || 'unit',
+                            rate: rate,
+                            amount: qty * rate
+                        };
+                    })
+                });
+            }
+
+            return await tx.invoice.update({
+                where: { id: req.params.id },
+                data,
+                include: { client: true, items: true }
             });
-        }
-
-        const invoice = await prisma.invoice.update({
-            where: { id: req.params.id },
-            data,
-            include: { client: true, items: true }
         });
 
-        res.json(invoice);
+        res.json(updatedInvoice);
     } catch (error) {
         console.error('Update invoice error:', error);
         res.status(500).json({ error: 'Failed to update invoice' });

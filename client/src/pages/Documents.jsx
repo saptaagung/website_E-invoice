@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Plus, ChevronDown, Calendar, Filter, Download, Eye, Edit, MoreVertical, Check, X } from 'lucide-react';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { Search, Plus, ChevronDown, Calendar, Filter, Download, Eye, Edit, MoreVertical, Check, X, Trash2 } from 'lucide-react';
 import { StatusBadge, Button } from '../components/ui';
 import { invoices, quotations } from '../lib/api';
 
@@ -89,7 +89,18 @@ function StatusDropdown({ currentStatus, statuses, onStatusChange, itemId }) {
 export default function Documents() {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const activeTab = searchParams.get('tab') || 'quotations';
+    const location = useLocation();
+
+    // Determine page context from URL
+    const isQuotationsPage = location.pathname.startsWith('/quotations');
+    const isInvoicesPage = location.pathname.startsWith('/invoices');
+    const isDocumentsPage = location.pathname === '/documents';
+
+    // Set active tab based on URL or search params
+    const activeTab = isQuotationsPage ? 'quotations' :
+        isInvoicesPage ? 'invoices' :
+            (searchParams.get('tab') || 'quotations');
+
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
@@ -165,7 +176,7 @@ export default function Documents() {
         }
     };
 
-    // Action handlers
+    // Action handlers - View shows PDF
     const handleView = (item) => {
         const basePath = item.type === 'quotation' ? '/quotations' : '/invoices';
         navigate(`${basePath}/${item.id}`);
@@ -189,6 +200,29 @@ export default function Documents() {
             alert('Failed to download PDF. Please try again.');
         } finally {
             setDownloadingId(null);
+        }
+    };
+
+    const handleDelete = async (item) => {
+        const confirmMessage = item.type === 'quotation'
+            ? `Are you sure you want to delete quotation ${item.displayId}?`
+            : `Are you sure you want to delete invoice ${item.displayId}?`;
+
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            if (item.type === 'quotation') {
+                await quotations.delete(item.id);
+                setQuotationsData(prev => prev.filter(q => q.id !== item.id));
+            } else {
+                await invoices.delete(item.id);
+                setInvoicesData(prev => prev.filter(i => i.id !== item.id));
+            }
+        } catch (error) {
+            console.error('Failed to delete:', error);
+            alert('Failed to delete. Please try again.');
         }
     };
 
@@ -238,23 +272,12 @@ export default function Documents() {
             {/* Main Card */}
             <div className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col min-h-[600px]">
                 {/* Card Header / Tabs */}
+                {/* Card Header - Title Only (Tabs Removed) */}
                 <div className="border-b border-border-light dark:border-border-dark px-6 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    {/* Tabs */}
-                    <div className="flex gap-8 overflow-x-auto no-scrollbar">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setSearchParams({ tab: tab.key })}
-                                className={`flex flex-col items-center justify-center border-b-[3px] pb-[13px] pt-4 px-1 transition-colors whitespace-nowrap ${activeTab === tab.key
-                                    ? 'border-b-primary text-primary'
-                                    : 'border-b-transparent text-text-secondary dark:text-gray-400 hover:text-text-main dark:hover:text-white'
-                                    }`}
-                            >
-                                <p className="text-sm font-semibold">
-                                    {tab.label} {tab.count !== null && `(${tab.count})`}
-                                </p>
-                            </button>
-                        ))}
+                    <div className="flex items-center pt-4 pb-3">
+                        <h1 className="text-lg font-bold text-text-main dark:text-white">
+                            {isQuotationsPage ? 'Quotations' : (isInvoicesPage ? 'Invoices' : 'Documents')}
+                        </h1>
                     </div>
 
                     {/* Header Action */}
@@ -341,13 +364,7 @@ export default function Documents() {
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                onClick={() => handleView(item)}
-                                                className="p-2 text-text-secondary hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                title="View"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
+
                                             <button
                                                 onClick={() => handleEdit(item)}
                                                 className="p-2 text-text-secondary hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
@@ -366,6 +383,13 @@ export default function Documents() {
                                                 ) : (
                                                     <Download size={18} />
                                                 )}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(item)}
+                                                className="p-2 text-text-secondary hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={18} />
                                             </button>
                                         </div>
                                     </td>

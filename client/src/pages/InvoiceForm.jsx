@@ -23,7 +23,7 @@ const terbilang = (amount) => {
     return numberToWords(Math.floor(amount)) + ' Rupiah';
 };
 
-// Default company settings
+// Default company settings (fallback)
 const defaultCompanySettings = {
     companyName: 'PT SETIA HABA TEKNOLOGI',
     legalName: 'PT Setia Haba Teknologi',
@@ -37,15 +37,15 @@ const defaultCompanySettings = {
     invoicePrefix: 'INV/',
     invoiceNextNum: 1,
     defaultTaxRate: 11,
-    bankName: 'Bank rakyat Indonesia',
-    bankAccountNum: '0034 0100 1925 301',
-    bankAccountName: 'PT SETIA HABA TEKNOLOGI',
     signatureName: 'Haikal Ahmed Al-Muzani',
+    signatureImage: null,
+    documentIntroText: 'Dengan ini kami sampaikan Rincian order PO : {PO_NUMBER} Sebagai berikut :',
     defaultTerms: `1. Harga termasuk biaya antar Jakarta & termasuk PPN 11%
 2. Barang akan langsung dikirim, saat pembayaran sudah di konfirmasi
 3. Masa berlaku penawaran 1 (satu) bulan terhitung sejak tanggal penawaran dibuat
 4. Cara pembayaran : Transfer atau Cek ke no rekening tertera
 5. Garansi 1 (satu) tahun`,
+    bankAccounts: [],
 };
 
 export default function InvoiceForm() {
@@ -65,6 +65,7 @@ export default function InvoiceForm() {
 
     // State for API data
     const [companySettings, setCompanySettings] = useState(defaultCompanySettings);
+    const [bankAccounts, setBankAccounts] = useState([]);
     const [clientsList, setClientsList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -73,42 +74,61 @@ export default function InvoiceForm() {
 
     // Generate auto number based on settings
     const generateDocNumber = (settings) => {
-        const year = new Date().getFullYear();
-        const prefix = docType === 'Quotation' ? (settings.quotationPrefix || 'SPG/') : (settings.invoicePrefix || 'INV/');
-        const nextNum = docType === 'Quotation' ? (settings.quotationNextNum || 1) : (settings.invoiceNextNum || 1);
-        return `${String(nextNum).padStart(4, '0')}/${prefix}${year}`;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+
+        let prefix, nextNum, padding;
+        if (docType === 'Quotation') {
+            // Use SPH format for Quotations
+            prefix = settings.sphPrefix || 'SPH/{YYYY}/';
+            nextNum = settings.sphNextNum || 1;
+            padding = settings.sphPadding || 4;
+        } else {
+            prefix = settings.invoicePrefix || 'INV/{YYYY}/{MM}/';
+            nextNum = settings.invoiceNextNum || 1;
+            padding = settings.invoicePadding || 5;
+        }
+
+        // Replace placeholders with actual values
+        const formattedPrefix = prefix
+            .replace('{YYYY}', year)
+            .replace('{MM}', month);
+
+        // Format: PREFIX + PADDED_NUMBER (e.g., SPH/2026/0001)
+        return `${formattedPrefix}${String(nextNum).padStart(padding, '0')}`;
     };
 
     const [formData, setFormData] = useState({
         number: '',
+        status: 'draft', // NEW: Track status
         date: new Date().toISOString().split('T')[0],
-        poNumber: '0071',
+        poNumber: '',
+        sourceQuotationNumber: '', // For Invoice: stores the source quotation number when converting
         clientId: '',
         selectedClient: null,
         applyTax: true,
         taxRate: 11,
-        bankName: '',
-        bankAccountNum: '',
-        bankAccountName: '',
-        signatureName: '',
+        discountPercent: 0,
+        selectedBankId: '',
+        introText: '',
         terms: '',
-        terbilangText: '',
+        signatureName: '',
+        signatureImage: null,
     });
 
-    // Grouped items structure
-    const [itemGroups, setItemGroups] = useState([
-        {
-            id: 1,
-            name: 'PERALATAN UTAMA',
-            expanded: true,
-            items: [
-                { id: 101, model: 'MGP24X', description: 'Digital Mixer 24CH', qty: 1, unit: 'unit', rate: 36000000 }
-            ]
-        }
-    ]);
+    // Track if invoice was created from quotation (to make NO SPH read-only)
+    const [isFromQuotation, setIsFromQuotation] = useState(false);
+
+    // ... (lines 118-165 unchanged roughly, targeting useEffect)
+
+    // Grouped items structure - start empty
+    const [itemGroups, setItemGroups] = useState([]);
 
     const [clientSearch, setClientSearch] = useState('');
+    const [newContactName, setNewContactName] = useState('');
     const [showClientDropdown, setShowClientDropdown] = useState(false);
+    const [creatingNewClient, setCreatingNewClient] = useState(false);
 
     // Fetch settings and clients on mount
     useEffect(() => {
@@ -120,7 +140,95 @@ export default function InvoiceForm() {
                     clientsApi.getAll().catch(() => [])
                 ]);
 
+                // If editing existing document, fetch it
+                if (!isNew && id) {
+                    try {
+                        let docData;
+                        if (docType === 'Quotation') {
+                            docData = await quotations.getOne(id);
+                        } else {
+                            docData = await invoices.getOne(id);
+                        }
+
+                        if (docData) {
+                            // Parse Decimal fields (Prisma returns as strings)
+                            const parsedTaxRate = parseFloat(docData.taxRate) || 11;
+                            const parsedDiscountAmount = parseFloat(docData.discount) || 0;
+                            const parsedSubtotal = parseFloat(docData.subtotal) || 0;
+
+                            // Calculate discount percentage if not explicitly stored
+                            // Since DB only stores amount, we must reverse calculate it
+                            let calculatedDiscountPercent = 0;
+                            // We check parsedSubtotal to avoid division by zero
+                            if (parsedSubtotal > 0 && parsedDiscountAmount > 0) {
+                                // Calculate percent (e.g. 4000 / 100000 * 100 = 4)
+                                calculatedDiscountPercent = (parsedDiscountAmount / parsedSubtotal) * 100;
+                                // Fix to reasonable decimal places if needed (e.g. 4.00 -> 4)
+                                calculatedDiscountPercent = Math.round(calculatedDiscountPercent * 100) / 100;
+                            }
+
+                            // Set form data from existing document
+                            setFormData(prev => ({
+                                ...prev,
+                                number: docData.quotationNumber || docData.invoiceNumber || '',
+                                date: docData.issueDate ? new Date(docData.issueDate).toISOString().split('T')[0] : prev.date,
+                                poNumber: docData.poNumber || docData.projectName || '',
+                                clientId: docData.clientId || '',
+                                selectedClient: docData.client || null,
+                                applyTax: parsedTaxRate > 0,
+                                taxRate: parsedTaxRate,
+                                discountPercent: calculatedDiscountPercent,
+                                introText: docData.notes || prev.introText,
+                                terms: docData.terms || prev.terms,
+                                signatureName: docData.signatureName || prev.signatureName,
+                                signatureImage: settingsData?.signatureImage || null,
+                            }));
+
+                            // Try to match bank account string to an ID
+                            const availableBanks = settingsData?.bankAccounts || [];
+                            if (docData.bankAccount && availableBanks.length > 0) {
+                                // docData.bankAccount is formats like "Bank Name - Account Number"
+                                // We match by checking if the account number exists in the string
+                                const matchedBank = availableBanks.find(b =>
+                                    docData.bankAccount.includes(b.accountNum || b.accountNumber)
+                                );
+                                if (matchedBank) {
+                                    setFormData(prev => ({ ...prev, selectedBankId: matchedBank.id }));
+                                }
+                            }
+
+                            // Group items by groupName
+                            if (docData.items && docData.items.length > 0) {
+                                const groupsMap = {};
+                                docData.items.forEach((item, idx) => {
+                                    const groupName = item.groupName || 'ITEMS';
+                                    if (!groupsMap[groupName]) {
+                                        groupsMap[groupName] = {
+                                            id: Object.keys(groupsMap).length + 1,
+                                            name: groupName,
+                                            expanded: true,
+                                            items: []
+                                        };
+                                    }
+                                    groupsMap[groupName].items.push({
+                                        id: idx + 100,
+                                        model: item.model || '',
+                                        description: item.description || '',
+                                        qty: item.quantity || 1,
+                                        unit: item.unit || 'unit',
+                                        rate: parseFloat(item.rate) || 0, // Parse Decimal string
+                                    });
+                                });
+                                setItemGroups(Object.values(groupsMap));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch document:', err);
+                    }
+                }
+
                 if (settingsData) {
+                    // Map settings from API
                     const mappedSettings = {
                         companyName: settingsData.companyName || defaultCompanySettings.companyName,
                         legalName: settingsData.legalName || settingsData.companyName || defaultCompanySettings.legalName,
@@ -129,30 +237,107 @@ export default function InvoiceForm() {
                         email: settingsData.email || defaultCompanySettings.email,
                         phone: settingsData.phone || defaultCompanySettings.phone,
                         workshop: settingsData.workshop || defaultCompanySettings.workshop,
-                        bankName: settingsData.bankAccounts?.[0]?.bankName || defaultCompanySettings.bankName,
-                        bankAccountNum: settingsData.bankAccounts?.[0]?.accountNum || defaultCompanySettings.bankAccountNum,
-                        bankAccountName: settingsData.bankAccounts?.[0]?.holderName || defaultCompanySettings.bankAccountName,
-                        signatureName: settingsData.signatureName || defaultCompanySettings.signatureName,
+                        logo: settingsData.logo,
                         quotationPrefix: settingsData.quotationPrefix || defaultCompanySettings.quotationPrefix,
                         quotationNextNum: settingsData.quotationNextNum || defaultCompanySettings.quotationNextNum,
                         invoicePrefix: settingsData.invoicePrefix || defaultCompanySettings.invoicePrefix,
                         invoiceNextNum: settingsData.invoiceNextNum || defaultCompanySettings.invoiceNextNum,
+                        sphPrefix: settingsData.sphPrefix || 'SPH/{YYYY}/',
+                        sphNextNum: settingsData.sphNextNum,
                         defaultTaxRate: settingsData.defaultTaxRate || defaultCompanySettings.defaultTaxRate,
                         defaultTerms: settingsData.defaultTerms || defaultCompanySettings.defaultTerms,
+                        documentIntroText: settingsData.documentIntroText || defaultCompanySettings.documentIntroText,
+                        signatureName: settingsData.signatureName || defaultCompanySettings.signatureName,
+                        signatureImage: settingsData.signatureImage || null,
                     };
                     setCompanySettings(mappedSettings);
+
+                    // Store bank accounts from settings
+                    const banks = settingsData.bankAccounts || [];
+                    setBankAccounts(banks);
+
+                    // Find default bank
+                    const defaultBank = banks.find(b => b.isDefault) || banks[0];
 
                     if (isNew) {
                         setFormData(prev => ({
                             ...prev,
                             number: generateDocNumber(mappedSettings),
                             taxRate: mappedSettings.defaultTaxRate,
-                            bankName: mappedSettings.bankName,
-                            bankAccountNum: mappedSettings.bankAccountNum,
-                            bankAccountName: mappedSettings.bankAccountName,
-                            signatureName: mappedSettings.signatureName,
                             terms: mappedSettings.defaultTerms,
+                            introText: mappedSettings.documentIntroText,
+                            signatureName: mappedSettings.signatureName,
+                            signatureImage: mappedSettings.signatureImage,
+                            selectedBankId: defaultBank?.id || '',
                         }));
+
+                        // Check if converting from quotation
+                        const fromType = searchParams.get('from');
+                        const refId = searchParams.get('ref');
+                        if (fromType === 'quotation' && refId && docType === 'Invoice') {
+                            try {
+                                const sourceQuotation = await quotations.getOne(refId);
+                                if (sourceQuotation) {
+                                    // Prefill from quotation data
+                                    const parsedTaxRate = parseFloat(sourceQuotation.taxRate) || 11;
+                                    const parsedDiscountAmount = parseFloat(sourceQuotation.discount) || 0;
+                                    const parsedSubtotal = parseFloat(sourceQuotation.subtotal) || 0;
+                                    let calculatedDiscountPercent = 0;
+                                    if (parsedSubtotal > 0 && parsedDiscountAmount > 0) {
+                                        calculatedDiscountPercent = (parsedDiscountAmount / parsedSubtotal) * 100;
+                                        calculatedDiscountPercent = Math.round(calculatedDiscountPercent * 100) / 100;
+                                    }
+
+                                    // Set flag that this invoice is from a quotation
+                                    setIsFromQuotation(true);
+
+                                    // Invoice-specific intro text with placeholders
+                                    const invoiceIntroText = 'Dengan ini kami sampaikan rincian pesanan berdasarkan PO {PO_NUMBER} dengan nomor invoice {INVOICE_NUMBER}';
+
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        // Keep new invoice number, but copy other data
+                                        poNumber: sourceQuotation.poNumber || sourceQuotation.projectName || '',
+                                        sourceQuotationNumber: sourceQuotation.quotationNumber || '', // Store source quotation number
+                                        clientId: sourceQuotation.clientId || '',
+                                        selectedClient: sourceQuotation.client || null,
+                                        applyTax: parsedTaxRate > 0,
+                                        taxRate: parsedTaxRate,
+                                        discountPercent: calculatedDiscountPercent,
+                                        introText: invoiceIntroText, // Use invoice-specific intro
+                                        terms: sourceQuotation.terms || prev.terms,
+                                        signatureName: sourceQuotation.signatureName || prev.signatureName,
+                                    }));
+
+                                    // Copy items from quotation
+                                    if (sourceQuotation.items && sourceQuotation.items.length > 0) {
+                                        const groupsMap = {};
+                                        sourceQuotation.items.forEach((item, idx) => {
+                                            const groupName = item.groupName || 'ITEMS';
+                                            if (!groupsMap[groupName]) {
+                                                groupsMap[groupName] = {
+                                                    id: Object.keys(groupsMap).length + 1,
+                                                    name: groupName,
+                                                    expanded: true,
+                                                    items: []
+                                                };
+                                            }
+                                            groupsMap[groupName].items.push({
+                                                id: idx + 100,
+                                                model: item.model || '',
+                                                description: item.description || '',
+                                                qty: item.quantity || 1,
+                                                unit: item.unit || 'unit',
+                                                rate: parseFloat(item.rate) || 0,
+                                            });
+                                        });
+                                        setItemGroups(Object.values(groupsMap));
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('Failed to fetch source quotation:', err);
+                            }
+                        }
                     }
                 } else {
                     if (isNew) {
@@ -160,11 +345,9 @@ export default function InvoiceForm() {
                             ...prev,
                             number: generateDocNumber(defaultCompanySettings),
                             taxRate: defaultCompanySettings.defaultTaxRate,
-                            bankName: defaultCompanySettings.bankName,
-                            bankAccountNum: defaultCompanySettings.bankAccountNum,
-                            bankAccountName: defaultCompanySettings.bankAccountName,
-                            signatureName: defaultCompanySettings.signatureName,
                             terms: defaultCompanySettings.defaultTerms,
+                            introText: defaultCompanySettings.documentIntroText,
+                            signatureName: defaultCompanySettings.signatureName,
                         }));
                     }
                 }
@@ -185,16 +368,19 @@ export default function InvoiceForm() {
     const subtotal = itemGroups.reduce((sum, group) =>
         sum + group.items.reduce((gSum, item) => gSum + (item.qty * item.rate), 0)
         , 0);
-    const taxAmount = formData.applyTax ? subtotal * (formData.taxRate / 100) : 0;
-    const total = subtotal + taxAmount;
+    const discountAmount = subtotal * (formData.discountPercent / 100);
+    const afterDiscount = subtotal - discountAmount;
+    const taxAmount = formData.applyTax ? afterDiscount * (formData.taxRate / 100) : 0;
+    const total = afterDiscount + taxAmount;
 
-    // Update terbilang when total changes
-    useEffect(() => {
-        setFormData(prev => ({
-            ...prev,
-            terbilangText: terbilang(total)
-        }));
-    }, [total]);
+    // Auto-calculate terbilang
+    const terbilangText = terbilang(total);
+
+    // Get selected bank details
+    const selectedBank = bankAccounts.find(b => b.id === formData.selectedBankId);
+
+    // Process intro text with PO number
+    const processedIntroText = formData.introText?.replace('{PO_NUMBER}', formData.poNumber || '____') || '';
 
     // Filter clients based on search
     const filteredClients = clientsList.filter(c =>
@@ -206,6 +392,14 @@ export default function InvoiceForm() {
     const selectClient = (client) => {
         setFormData({ ...formData, clientId: client.id, selectedClient: client });
         setClientSearch('');
+        setNewContactName('');
+        setShowClientDropdown(false);
+        setCreatingNewClient(false);
+    };
+
+    // Start creating new client
+    const startNewClient = () => {
+        setCreatingNewClient(true);
         setShowClientDropdown(false);
     };
 
@@ -269,15 +463,74 @@ export default function InvoiceForm() {
         ));
     };
 
-    // Save document handler
-    const handleSave = async (status = 'draft') => {
-        if (!formData.selectedClient) {
-            setError('Please select a client');
+    // Validate mandatory fields
+    const validateFields = () => {
+        const missing = [];
+        if (!formData.selectedClient && !clientSearch.trim()) missing.push('Customer');
+        if (!formData.date) missing.push('Date');
+        if (itemGroups.length === 0) missing.push('Items');
+        const hasValidItems = itemGroups.some(g => g.items.some(i => i.description && i.qty > 0 && i.rate > 0));
+        if (!hasValidItems) missing.push('At least one valid item (with description, qty, and rate)');
+        if (!formData.signatureName) missing.push('Signature Name');
+        // For quotations, bank account is recommended but not strictly required per user request
+        return missing;
+    };
+
+    // State for incomplete save confirmation popup
+    const [showIncompletePopup, setShowIncompletePopup] = useState(false);
+    const [incompleteMissingFields, setIncompleteMissingFields] = useState([]);
+
+    // Save document handler - new simplified flow
+    const handleSave = async (forceDraft = false) => {
+        // Validate fields
+        const missingFields = validateFields();
+
+        // If fields are missing and not forcing draft, show popup
+        if (missingFields.length > 0 && !forceDraft) {
+            setIncompleteMissingFields(missingFields);
+            setShowIncompletePopup(true);
+            return;
+        }
+
+        // Determine target status based on completeness
+        const targetStatus = missingFields.length === 0 ? 'sent' : 'draft';
+
+        // Check if we have a client selected or need to create one
+        let clientForDocument = formData.selectedClient;
+
+        if (!clientForDocument && clientSearch.trim()) {
+            // Create new client on the fly
+            setSaving(true);
+            setError('');
+            try {
+                const newClient = await clientsApi.create({
+                    name: clientSearch.trim(),
+                    contactName: newContactName.trim() || clientSearch.trim(),
+                    email: '',
+                    phone: '',
+                    address: '',
+                });
+                clientForDocument = newClient;
+                setFormData(prev => ({ ...prev, selectedClient: newClient, clientId: newClient.id }));
+                setClientsList(prev => [...prev, newClient]);
+                setClientSearch('');
+                setNewContactName('');
+                setCreatingNewClient(false);
+            } catch (err) {
+                setError('Failed to create new client: ' + (err.message || 'Unknown error'));
+                setSaving(false);
+                return;
+            }
+        }
+
+        if (!clientForDocument && targetStatus === 'sent') {
+            setError('Please select or enter a customer name');
             return;
         }
 
         setSaving(true);
         setError('');
+        setShowIncompletePopup(false);
 
         try {
             // Flatten items for API
@@ -288,37 +541,63 @@ export default function InvoiceForm() {
                     description: item.description,
                     quantity: item.qty,
                     unit: item.unit,
-                    unitPrice: item.rate,
+                    rate: item.rate,
                 }))
             );
 
             const documentData = {
-                clientId: formData.selectedClient.id,
+                clientId: clientForDocument?.id || null,
                 issueDate: formData.date,
-                status: status,
+                status: targetStatus,
                 poNumber: formData.poNumber,
-                notes: formData.terms,
+                notes: formData.introText,
                 terms: formData.terms,
                 taxRate: formData.applyTax ? formData.taxRate : 0,
-                bankAccount: `${formData.bankName} - ${formData.bankAccountNum}`,
+                discount: formData.discountPercent,
+                // Bank account only for Quotations - include holder name (AN)
+                ...(docType === 'Quotation' && selectedBank ? {
+                    bankAccount: `${selectedBank.bankName}\n${selectedBank.accountNum || selectedBank.accountNumber}\nAN : ${selectedBank.holderName || selectedBank.accountHolder || ''}`
+                } : {}),
                 signatureName: formData.signatureName,
                 items: flatItems,
             };
 
+            let savedDoc;
+
             if (docType === 'Quotation') {
                 if (isNew) {
-                    await quotations.create(documentData);
+                    savedDoc = await quotations.create(documentData);
                 } else {
-                    await quotations.update(id, documentData);
+                    savedDoc = await quotations.update(id, documentData);
                 }
-                navigate('/documents?tab=quotations');
+
+                // Always download PDF on successful save (if status is sent)
+                if (targetStatus === 'sent') {
+                    try {
+                        await quotations.downloadPDF(savedDoc.id, savedDoc.quotationNumber);
+                    } catch (e) {
+                        console.error('PDF download failed:', e);
+                    }
+                }
+
+                navigate('/quotations');
             } else {
                 if (isNew) {
-                    await invoices.create(documentData);
+                    savedDoc = await invoices.create(documentData);
                 } else {
-                    await invoices.update(id, documentData);
+                    savedDoc = await invoices.update(id, documentData);
                 }
-                navigate('/documents?tab=invoices');
+
+                // Always download PDF on successful save (if status is sent)
+                if (targetStatus === 'sent') {
+                    try {
+                        await invoices.downloadPDF(savedDoc.id, savedDoc.invoiceNumber);
+                    } catch (e) {
+                        console.error('PDF download failed:', e);
+                    }
+                }
+
+                navigate('/invoices');
             }
 
             setSavedJustNow(true);
@@ -366,27 +645,11 @@ export default function InvoiceForm() {
                         </span>
                     )}
                     <Button
-                        variant="secondary"
                         icon={Save}
-                        onClick={() => handleSave('draft')}
+                        onClick={() => handleSave()}
                         disabled={saving}
                     >
-                        {saving ? 'Saving...' : 'Save Draft'}
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        icon={Send}
-                        onClick={() => handleSave('sent')}
-                        disabled={saving}
-                    >
-                        Send Email
-                    </Button>
-                    <Button
-                        icon={Download}
-                        onClick={() => handleSave('pending')}
-                        disabled={saving}
-                    >
-                        Download PDF
+                        {saving ? 'Saving...' : 'Save'}
                     </Button>
                 </div>
             </div>
@@ -398,6 +661,41 @@ export default function InvoiceForm() {
                     <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
                         <X size={16} />
                     </button>
+                </div>
+            )}
+
+            {/* Incomplete Fields Popup */}
+            {showIncompletePopup && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 max-w-md w-full mx-4 shadow-xl">
+                        <h3 className="text-lg font-semibold text-text-main dark:text-white mb-3 flex items-center gap-2">
+                            ⚠️ Incomplete Document
+                        </h3>
+                        <p className="text-sm text-text-secondary mb-4">
+                            The following fields are missing or incomplete:
+                        </p>
+                        <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 mb-4 space-y-1">
+                            {incompleteMissingFields.map((field, idx) => (
+                                <li key={idx}>{field}</li>
+                            ))}
+                        </ul>
+                        <p className="text-sm text-text-secondary mb-6">
+                            Would you like to save this as a <strong>Draft</strong>? You can complete it later.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowIncompletePopup(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => handleSave(true)}
+                            >
+                                Save as Draft
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -423,15 +721,29 @@ export default function InvoiceForm() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">NO SPH</label>
+                                    <label className="block text-xs font-medium text-text-secondary mb-2">
+                                        {docType === 'Invoice' ? 'NO INVOICE' : 'NO SPH'}
+                                    </label>
                                     <input
                                         type="text"
                                         value={formData.number}
                                         onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                                        placeholder="0031/SPG/2025"
+                                        placeholder="Auto-generated from settings"
                                         className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                     />
                                 </div>
+                                {/* Show source quotation number for Invoice from Quotation */}
+                                {docType === 'Invoice' && isFromQuotation && formData.sourceQuotationNumber && (
+                                    <div>
+                                        <label className="block text-xs font-medium text-text-secondary mb-2">NO SPH (Source)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.sourceQuotationNumber}
+                                            readOnly
+                                            className="w-full px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white cursor-not-allowed"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Customer Selection */}
@@ -450,40 +762,109 @@ export default function InvoiceForm() {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="relative flex gap-2">
-                                        <div className="flex-1 relative">
+                                    <div className="space-y-2">
+                                        <div className="relative">
                                             <input
                                                 type="text"
-                                                placeholder="Search clients..."
+                                                placeholder="Type customer name or search..."
                                                 value={clientSearch}
                                                 onChange={(e) => {
                                                     setClientSearch(e.target.value);
                                                     setShowClientDropdown(true);
+                                                    setCreatingNewClient(false);
                                                 }}
                                                 onFocus={() => setShowClientDropdown(true)}
                                                 onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
                                                 className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                             />
-                                            {showClientDropdown && filteredClients.length > 0 && (
+                                            {showClientDropdown && (
                                                 <div className="absolute z-20 w-full mt-1 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                                    {filteredClients.map(client => (
+                                                    {filteredClients.length > 0 ? (
+                                                        <>
+                                                            {filteredClients.map(client => (
+                                                                <button
+                                                                    key={client.id}
+                                                                    onClick={() => selectClient(client)}
+                                                                    className="w-full px-4 py-3 text-left hover:bg-primary/5 border-b border-border-light dark:border-border-dark last:border-0"
+                                                                >
+                                                                    <p className="font-medium text-text-main dark:text-white text-sm">{client.name}</p>
+                                                                    <p className="text-xs text-text-secondary">UP: {client.contactName}</p>
+                                                                </button>
+                                                            ))}
+                                                            {clientSearch.trim() && !filteredClients.some(c => c.name.toLowerCase() === clientSearch.toLowerCase()) && (
+                                                                <button
+                                                                    onClick={startNewClient}
+                                                                    className="w-full px-4 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20 border-t border-border-light dark:border-border-dark bg-green-50/50 dark:bg-green-900/10"
+                                                                >
+                                                                    <p className="font-medium text-green-600 dark:text-green-400 text-sm flex items-center gap-1">
+                                                                        <Plus size={14} /> Create "{clientSearch}" as new customer
+                                                                    </p>
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    ) : clientSearch.trim() ? (
                                                         <button
-                                                            key={client.id}
-                                                            onClick={() => selectClient(client)}
-                                                            className="w-full px-4 py-3 text-left hover:bg-primary/5 border-b border-border-light dark:border-border-dark last:border-0"
+                                                            onClick={startNewClient}
+                                                            className="w-full px-4 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20"
                                                         >
-                                                            <p className="font-medium text-text-main dark:text-white text-sm">{client.name}</p>
-                                                            <p className="text-xs text-text-secondary">UP: {client.contactName}</p>
+                                                            <p className="font-medium text-green-600 dark:text-green-400 text-sm flex items-center gap-1">
+                                                                <Plus size={14} /> Create "{clientSearch}" as new customer
+                                                            </p>
+                                                            <p className="text-xs text-text-secondary">Click to add contact info</p>
                                                         </button>
-                                                    ))}
+                                                    ) : (
+                                                        <div className="px-4 py-3 text-text-secondary text-sm">
+                                                            Type a customer name...
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
-                                        <Link to="/clients" className="px-4 py-2.5 text-primary text-sm font-medium hover:bg-primary/5 rounded-lg border border-primary/20">
-                                            + New
-                                        </Link>
+                                        {/* Contact name field for new customer */}
+                                        {creatingNewClient && clientSearch.trim() && (
+                                            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                                <p className="text-xs text-green-700 dark:text-green-400 mb-2">
+                                                    New customer: <strong>{clientSearch}</strong>
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Contact person name (UP)"
+                                                    value={newContactName}
+                                                    onChange={(e) => setNewContactName(e.target.value)}
+                                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                                />
+                                                <p className="text-xs text-text-secondary mt-1">Will be created when you save the document</p>
+                                            </div>
+                                        )}
+                                        {clientSearch.trim() && !creatingNewClient && !formData.selectedClient && (
+                                            <p className="text-xs text-green-600 dark:text-green-400">
+                                                💡 This will create a new customer when you save
+                                            </p>
+                                        )}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Intro Text (Editable) */}
+                            <div>
+                                <label className="block text-xs font-medium text-text-secondary mb-2">Document Intro Text</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={formData.poNumber}
+                                        onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+                                        placeholder="PO Number"
+                                        className="w-24 px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={formData.introText}
+                                        onChange={(e) => setFormData({ ...formData, introText: e.target.value })}
+                                        placeholder="Dengan ini kami sampaikan..."
+                                        className="flex-1 px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                    />
+                                </div>
+                                <p className="text-xs text-text-secondary mt-1">Use {'{PO_NUMBER}'} as placeholder for PO number</p>
                             </div>
                         </div>
                     </div>
@@ -504,6 +885,11 @@ export default function InvoiceForm() {
 
                         {/* Item Groups */}
                         <div className="space-y-4">
+                            {itemGroups.length === 0 && (
+                                <div className="text-center py-8 text-text-secondary">
+                                    <p className="text-sm">Belum ada item. Klik <strong>"+ Add Group"</strong> untuk memulai.</p>
+                                </div>
+                            )}
                             {itemGroups.map((group) => (
                                 <div key={group.id} className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden">
                                     {/* Group Header */}
@@ -515,7 +901,7 @@ export default function InvoiceForm() {
                                             type="text"
                                             value={group.name}
                                             onChange={(e) => updateGroupName(group.id, e.target.value)}
-                                            placeholder="Group Name (e.g. PERALATAN UTAMA)"
+                                            placeholder="Tambah Judul (e.g. PERALATAN UTAMA)"
                                             className="flex-1 bg-transparent text-sm font-semibold text-text-main dark:text-white focus:outline-none"
                                         />
                                         {itemGroups.length > 1 && (
@@ -612,61 +998,101 @@ export default function InvoiceForm() {
                             ))}
                         </div>
 
-                        {/* Apply PPN Checkbox */}
-                        <div className="mt-4 flex items-center gap-2">
-                            <button
-                                onClick={() => setFormData({ ...formData, applyTax: !formData.applyTax })}
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.applyTax ? 'bg-primary border-primary text-white' : 'border-border-light dark:border-border-dark'
-                                    }`}
-                            >
-                                {formData.applyTax && <Check size={12} />}
-                            </button>
-                            <span className="text-sm text-text-main dark:text-white">Apply PPN {formData.taxRate}%</span>
+                        {/* Tax and Discount */}
+                        <div className="mt-4 flex flex-wrap items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setFormData({ ...formData, applyTax: !formData.applyTax })}
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.applyTax ? 'bg-primary border-primary text-white' : 'border-border-light dark:border-border-dark'
+                                        }`}
+                                >
+                                    {formData.applyTax && <Check size={12} />}
+                                </button>
+                                <span className="text-sm text-text-main dark:text-white">Apply PPN {formData.taxRate}%</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-text-secondary">Discount:</label>
+                                <input
+                                    type="number"
+                                    value={formData.discountPercent}
+                                    onChange={(e) => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })}
+                                    className="w-16 px-2 py-1 text-sm bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
+                                    min="0"
+                                    max="100"
+                                />
+                                <span className="text-sm text-text-secondary">%</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Terbilang Card */}
+                    {/* Terbilang Card (Auto-calculated) */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                        <label className="block text-xs font-medium text-text-secondary mb-2">Terbilang (In Words)</label>
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Terbilang (Auto-calculated)</label>
+                        <div className="px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-lg text-sm text-text-main dark:text-white italic">
+                            {terbilangText}
+                        </div>
+                    </div>
+
+                    {/* Syarat dan Ketentuan Card */}
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Syarat dan Ketentuan</label>
                         <textarea
-                            value={formData.terbilangText}
-                            onChange={(e) => setFormData({ ...formData, terbilangText: e.target.value })}
-                            rows={2}
+                            value={formData.terms}
+                            onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                            rows={5}
+                            placeholder="Enter terms and conditions..."
                             className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white resize-none"
                         />
+                        <p className="text-xs text-text-secondary mt-1">Default terms loaded from Settings. You can edit per document.</p>
                     </div>
 
-                    {/* Bank Details Card */}
+                    {/* Bank Selection Card - Only for Quotations */}
+                    {docType === 'Quotation' && (
+                        <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+                            <label className="block text-xs font-medium text-text-secondary mb-2">Bank Account</label>
+                            {bankAccounts.length > 0 ? (
+                                <select
+                                    value={formData.selectedBankId}
+                                    onChange={(e) => setFormData({ ...formData, selectedBankId: e.target.value })}
+                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                                >
+                                    <option value="">Select bank account</option>
+                                    {bankAccounts.map(bank => (
+                                        <option key={bank.id} value={bank.id}>
+                                            {bank.bankName} - {bank.accountNum || bank.accountNumber} ({bank.holderName || bank.accountHolder})
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
+                                    No bank accounts configured. <Link to="/settings" className="text-primary underline">Add in Settings</Link>
+                                </div>
+                            )}
+                            {selectedBank && (
+                                <div className="mt-2 p-3 bg-background-light dark:bg-background-dark rounded-lg text-xs text-text-secondary">
+                                    <p><strong>Bank:</strong> {selectedBank.bankName}</p>
+                                    <p><strong>AN:</strong> {selectedBank.holderName || selectedBank.accountHolder}</p>
+                                    <p><strong>AC:</strong> {selectedBank.accountNum || selectedBank.accountNumber}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Signature Card */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-medium text-text-secondary mb-2">Bank Name</label>
-                                <input
-                                    type="text"
-                                    value={formData.bankName}
-                                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-text-secondary mb-2">Account Number (AC)</label>
-                                <input
-                                    type="text"
-                                    value={formData.bankAccountNum}
-                                    onChange={(e) => setFormData({ ...formData, bankAccountNum: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                                />
-                            </div>
-                        </div>
-                        <div className="mt-4">
-                            <label className="block text-xs font-medium text-text-secondary mb-2">Account Name (AN)</label>
-                            <input
-                                type="text"
-                                value={formData.bankAccountName}
-                                onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
-                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
-                            />
-                        </div>
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Signature</label>
+                        <input
+                            type="text"
+                            value={formData.signatureName}
+                            onChange={(e) => setFormData({ ...formData, signatureName: e.target.value })}
+                            placeholder="Signature name"
+                            className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
+                        />
+                        {docType === 'Quotation' ? (
+                            <p className="text-xs text-text-secondary mt-1">Signature image can be configured in Settings.</p>
+                        ) : (
+                            <p className="text-xs text-text-secondary mt-1">Invoice uses wet signature. Space will be left blank for signing.</p>
+                        )}
                     </div>
                 </div>
 
@@ -684,18 +1110,24 @@ export default function InvoiceForm() {
                     {/* Document Preview - Matching Export Format */}
                     <div className="bg-white rounded-lg shadow-lg overflow-hidden text-slate-700 border" style={{ fontSize: '9px' }}>
                         <div className="p-5">
-                            {/* Header with Logo & Company Info */}
+                            {/* Header with Logo & Company Info (Dynamic from Settings) */}
                             <div className="flex gap-4 items-start pb-3 border-b-2 border-blue-800">
                                 <div className="flex-shrink-0">
-                                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
-                                        <span className="text-white font-bold text-lg">SHT</span>
-                                    </div>
+                                    {companySettings.logo ? (
+                                        <img src={companySettings.logo} alt="Logo" className="w-14 h-14 object-contain" />
+                                    ) : (
+                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
+                                            <span className="text-white font-bold text-lg">SHT</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex-1">
                                     <h1 className="text-xl font-bold text-blue-800">{companySettings.companyName}</h1>
                                     <p className="text-[8px] text-slate-600">Office: {companySettings.address}</p>
                                     <p className="text-[8px] text-slate-600">{companySettings.city}</p>
-                                    <p className="text-[8px] text-slate-600">Workshop: {companySettings.workshop}</p>
+                                    {companySettings.workshop && (
+                                        <p className="text-[8px] text-slate-600">Workshop: {companySettings.workshop}</p>
+                                    )}
                                     <p className="text-[8px] text-slate-600">Email: {companySettings.email}</p>
                                     <p className="text-[8px] text-slate-600">Telp/Fax: {companySettings.phone}</p>
                                 </div>
@@ -722,13 +1154,13 @@ export default function InvoiceForm() {
                                         <tr>
                                             <td className="bg-blue-800 text-white px-3 py-1.5 font-bold w-24" style={{ fontSize: '10px' }}>CUSTOMER</td>
                                             <td className="bg-blue-100 px-3 py-1.5 text-blue-800 font-medium" style={{ fontSize: '10px' }}>
-                                                {formData.selectedClient?.name || 'Select Customer'} / UP : {formData.selectedClient?.contactName || '-'}
+                                                {formData.selectedClient?.name || (creatingNewClient && clientSearch ? clientSearch : 'Select Customer')} / UP : {formData.selectedClient?.contactName || (creatingNewClient ? (newContactName || '-') : '-')}
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                                 <p className="text-[8px] text-slate-600 mt-2">
-                                    Dengan ini kami sampaikan Rincian order PO : {formData.poNumber} Sebagai berikut :
+                                    {processedIntroText}
                                 </p>
                             </div>
 
@@ -763,13 +1195,6 @@ export default function InvoiceForm() {
                                                         <td className="border border-slate-300 px-2 py-1 text-right">{formatIDR(item.qty * item.rate)}</td>
                                                     </tr>
                                                 ))}
-                                                {group.items.length > 5 && (
-                                                    <tr>
-                                                        <td colSpan={5} className="border border-slate-300 px-2 py-1 text-center text-slate-400 italic">
-                                                            +{group.items.length - 5} more items...
-                                                        </td>
-                                                    </tr>
-                                                )}
                                             </>
                                         ))}
                                     </tbody>
@@ -781,7 +1206,9 @@ export default function InvoiceForm() {
                                 <div className="text-[7px]">
                                     <p className="font-bold text-slate-800 mb-1">Syarat dan Ketentuan:</p>
                                     <div className="text-slate-600 whitespace-pre-line leading-relaxed">
-                                        {formData.terms}
+                                        <div className="text-slate-600 whitespace-pre-line leading-relaxed">
+                                            {formData.terms}
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
@@ -792,6 +1219,13 @@ export default function InvoiceForm() {
                                                 <td className="border border-slate-300 px-2 py-1 text-right">Rp</td>
                                                 <td className="border border-slate-300 px-2 py-1 text-right font-medium">{formatIDR(subtotal)}</td>
                                             </tr>
+                                            {formData.discountPercent > 0 && (
+                                                <tr className="text-red-600">
+                                                    <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">Discount {formData.discountPercent}%</td>
+                                                    <td className="border border-slate-300 px-2 py-1 text-right">Rp</td>
+                                                    <td className="border border-slate-300 px-2 py-1 text-right">-{formatIDR(discountAmount)}</td>
+                                                </tr>
+                                            )}
                                             {formData.applyTax && (
                                                 <tr>
                                                     <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">PPN {formData.taxRate}%</td>
@@ -816,7 +1250,7 @@ export default function InvoiceForm() {
                                         <tr>
                                             <td className="bg-blue-800 text-white px-3 py-2 font-bold w-20" style={{ fontSize: '9px' }}>Terbilang :</td>
                                             <td className="bg-blue-100 px-3 py-2 italic text-blue-800" style={{ fontSize: '9px' }}>
-                                                {formData.terbilangText}
+                                                {terbilangText}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -826,16 +1260,31 @@ export default function InvoiceForm() {
                             {/* Bank & Signature */}
                             <div className="mt-4 flex justify-between items-end text-[8px]">
                                 <div>
-                                    <p className="font-medium text-slate-800">{formData.bankName}</p>
-                                    <p>AN : <span className="font-semibold">{formData.bankAccountName}</span></p>
-                                    <p>AC : <span>{formData.bankAccountNum}</span></p>
+                                    {/* Bank details only for Quotation */}
+                                    {docType === 'Quotation' && selectedBank && (
+                                        <>
+                                            <p className="font-medium text-slate-800">{selectedBank.bankName}</p>
+                                            <p>AN : <span className="font-semibold">{selectedBank.holderName || selectedBank.accountHolder}</span></p>
+                                            <p>AC : <span>{selectedBank.accountNum || selectedBank.accountNumber}</span></p>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="text-center">
                                     <p className="mb-1">Hormat Kami</p>
                                     <p className="font-bold text-slate-800">{companySettings.legalName}</p>
-                                    <div className="my-2 mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
-                                        <span className="text-white font-bold text-sm">SHT</span>
-                                    </div>
+                                    {/* Signature image only for Quotation */}
+                                    {docType === 'Quotation' ? (
+                                        formData.signatureImage ? (
+                                            <img src={formData.signatureImage} alt="Signature" className="my-2 mx-auto h-12 object-contain" />
+                                        ) : (
+                                            <div className="my-2 mx-auto w-12 h-12 bg-gradient-to-br from-blue-600 to-orange-500 rounded flex items-center justify-center">
+                                                <span className="text-white font-bold text-sm">SHT</span>
+                                            </div>
+                                        )
+                                    ) : (
+                                        /* For Invoice: Leave space for wet signature */
+                                        <div className="my-2 mx-auto w-20 h-10 border-b border-dashed border-slate-400"></div>
+                                    )}
                                     <p className="font-medium border-t border-slate-300 pt-1">{formData.signatureName}</p>
                                 </div>
                             </div>

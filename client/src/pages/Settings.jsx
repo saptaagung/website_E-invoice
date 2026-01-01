@@ -20,12 +20,51 @@ export default function Settings() {
     // Form state
     const [companyData, setCompanyData] = useState({
         companyName: '',
+        legalName: '',
         taxId: '',
         email: '',
         phone: '',
         address: '',
+        city: '',
+        workshop: '',
         signatureName: '',
+        signatureImage: '',
+        logo: '',
+        documentIntroText: '',
+        defaultTerms: '',
     });
+
+    // Handle logo upload
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                setError('Logo file size must be less than 2MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCompanyData({ ...companyData, logo: reader.result });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Handle signature image upload
+    const handleSignatureUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 1 * 1024 * 1024) {
+                setError('Signature file size must be less than 1MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCompanyData({ ...companyData, signatureImage: reader.result });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const [taxSettings, setTaxSettings] = useState({
         enabled: true,
@@ -64,11 +103,18 @@ export default function Settings() {
                 if (data) {
                     setCompanyData({
                         companyName: data.companyName || '',
+                        legalName: data.legalName || '',
                         taxId: data.taxId || '',
                         email: data.email || '',
                         phone: data.phone || '',
                         address: data.address || '',
+                        city: data.city || '',
+                        workshop: data.workshop || '',
                         signatureName: data.signatureName || '',
+                        signatureImage: data.signatureImage || '',
+                        logo: data.logo || '',
+                        documentIntroText: data.documentIntroText || '',
+                        defaultTerms: data.defaultTerms || '',
                     });
                     setTaxSettings({
                         enabled: data.taxEnabled ?? true,
@@ -110,11 +156,18 @@ export default function Settings() {
         try {
             await settingsApi.update({
                 companyName: companyData.companyName,
+                legalName: companyData.legalName,
                 taxId: companyData.taxId,
                 email: companyData.email,
                 phone: companyData.phone,
                 address: companyData.address,
+                city: companyData.city,
+                workshop: companyData.workshop,
+                logo: companyData.logo,
                 signatureName: companyData.signatureName,
+                signatureImage: companyData.signatureImage,
+                documentIntroText: companyData.documentIntroText,
+                defaultTerms: companyData.defaultTerms,
                 taxEnabled: taxSettings.enabled,
                 taxName: taxSettings.name,
                 taxRate: taxSettings.rate,
@@ -229,12 +282,36 @@ export default function Settings() {
                             {/* Logo Upload */}
                             <div className="flex flex-col gap-4 items-center md:items-start min-w-[160px]">
                                 <span className="text-sm font-medium text-text-main dark:text-gray-300">Company Logo</span>
-                                <div className="group relative h-32 w-32 rounded-full bg-background-light dark:bg-gray-800 border-2 border-dashed border-border-light dark:border-border-dark flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden">
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-text-secondary group-hover:text-primary transition-colors">
-                                        <Upload size={24} />
-                                        <span className="text-xs font-medium mt-1">Change</span>
-                                    </div>
-                                </div>
+                                <label className="group relative h-32 w-32 rounded-full bg-background-light dark:bg-gray-800 border-2 border-dashed border-border-light dark:border-border-dark flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden">
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg"
+                                        onChange={handleLogoUpload}
+                                        className="hidden"
+                                    />
+                                    {companyData.logo ? (
+                                        <img src={companyData.logo} alt="Company Logo" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-text-secondary group-hover:text-primary transition-colors">
+                                            <Upload size={24} />
+                                            <span className="text-xs font-medium mt-1">Upload</span>
+                                        </div>
+                                    )}
+                                    {companyData.logo && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Upload size={24} className="text-white" />
+                                            <span className="text-xs font-medium mt-1 text-white">Change</span>
+                                        </div>
+                                    )}
+                                </label>
+                                {companyData.logo && (
+                                    <button
+                                        onClick={() => setCompanyData({ ...companyData, logo: '' })}
+                                        className="text-xs text-red-500 hover:text-red-700"
+                                    >
+                                        Remove Logo
+                                    </button>
+                                )}
                                 <p className="text-xs text-text-secondary text-center md:text-left">Max file size 2MB.<br />PNG or JPG recommended.</p>
                             </div>
 
@@ -292,10 +369,71 @@ export default function Settings() {
                                     <textarea
                                         value={companyData.address}
                                         onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                                        rows={3}
+                                        rows={2}
                                         className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 resize-none"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">City</label>
+                                    <input
+                                        type="text"
+                                        value={companyData.city}
+                                        onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
+                                        placeholder="Serpong, Tangerang Selatan 15318"
+                                        className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Workshop Address</label>
+                                    <input
+                                        type="text"
+                                        value={companyData.workshop}
+                                        onChange={(e) => setCompanyData({ ...companyData, workshop: e.target.value })}
+                                        placeholder="Workshop/branch address"
+                                        className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Signature Image Section */}
+                    <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Signature Settings</h2>
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 sm:p-8">
+                        <div className="flex flex-col md:flex-row gap-8">
+                            <div className="flex flex-col gap-4 items-center md:items-start min-w-[160px]">
+                                <span className="text-sm font-medium text-text-main dark:text-gray-300">Signature Image</span>
+                                <label className="group relative h-24 w-48 bg-background-light dark:bg-gray-800 border-2 border-dashed border-border-light dark:border-border-dark flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden rounded-lg">
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg"
+                                        onChange={handleSignatureUpload}
+                                        className="hidden"
+                                    />
+                                    {companyData.signatureImage ? (
+                                        <img src={companyData.signatureImage} alt="Signature" className="w-full h-full object-contain" />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center text-text-secondary group-hover:text-primary transition-colors">
+                                            <Upload size={20} />
+                                            <span className="text-xs font-medium mt-1">Upload Signature</span>
+                                        </div>
+                                    )}
+                                    {companyData.signatureImage && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Upload size={20} className="text-white" />
+                                            <span className="text-xs font-medium mt-1 text-white">Change</span>
+                                        </div>
+                                    )}
+                                </label>
+                                {companyData.signatureImage && (
+                                    <button
+                                        onClick={() => setCompanyData({ ...companyData, signatureImage: '' })}
+                                        className="text-xs text-red-500 hover:text-red-700"
+                                    >
+                                        Remove Signature
+                                    </button>
+                                )}
+                                <p className="text-xs text-text-secondary">Max 1MB. Transparent PNG recommended.</p>
                             </div>
                         </div>
                     </div>
@@ -469,58 +607,7 @@ export default function Settings() {
                     <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Document Numbering</h2>
                     <p className="text-sm text-text-secondary -mt-4">Configure auto-increment format for each document type</p>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Quotation Numbering */}
-                        <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-600">
-                                    <Hash size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-text-main dark:text-white">Quotation</h3>
-                                    <p className="text-xs text-text-secondary">SPG/Penawaran</p>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Prefix Format</label>
-                                    <input
-                                        type="text"
-                                        value={quotationNumbering.prefix}
-                                        onChange={(e) => setQuotationNumbering({ ...quotationNumbering, prefix: e.target.value })}
-                                        className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary text-sm py-2 px-3 font-mono"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Next No.</label>
-                                        <input
-                                            type="number"
-                                            value={quotationNumbering.nextNumber}
-                                            onChange={(e) => setQuotationNumbering({ ...quotationNumbering, nextNumber: parseInt(e.target.value) || 1 })}
-                                            className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary text-sm py-2 px-3 font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Padding</label>
-                                        <select
-                                            value={quotationNumbering.padding}
-                                            onChange={(e) => setQuotationNumbering({ ...quotationNumbering, padding: parseInt(e.target.value) })}
-                                            className="w-full rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-text-main dark:text-white shadow-sm focus:border-primary focus:ring-primary text-sm py-2 px-3"
-                                        >
-                                            <option value={3}>3 (001)</option>
-                                            <option value={4}>4 (0001)</option>
-                                            <option value={5}>5 (00001)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-800">
-                                    <span className="text-xs text-orange-600 font-bold">PREVIEW: </span>
-                                    <span className="text-sm font-mono text-orange-700 dark:text-orange-400">{generatePreview(quotationNumbering)}</span>
-                                </div>
-                            </div>
-                        </div>
-
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Invoice Numbering */}
                         <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
                             <div className="flex items-center gap-3 mb-6">

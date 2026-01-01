@@ -41,8 +41,22 @@ const terbilang = (amount) => {
 /**
  * Generate Invoice PDF
  */
+const PRIMARY_COLOR = '#1e40af'; // Blue-800 matching preview
+const TEXT_COLOR = '#333333';
+const TEXT_SECONDARY = '#64748b'; // Slate-500
+const BG_LIGHT = '#eff6ff'; // Blue-50
+
+function drawHeaderBox(doc, x, y, label, value) {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(TEXT_COLOR);
+    doc.text(label, x + 5, y + 6, { width: 50 });
+    doc.font('Helvetica').text(value, x + 60, y + 6);
+}
+
+/**
+ * Generate Invoice PDF
+ */
 export function generateInvoicePDF(invoice, companySettings) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
             const doc = new PDFDocument({ size: 'A4', margin: 40 });
             const chunks = [];
@@ -54,147 +68,212 @@ export function generateInvoicePDF(invoice, companySettings) {
             const pageWidth = doc.page.width - 80;
             let y = 40;
 
-            // Header
-            doc.font('Helvetica-Bold').fontSize(16).fillColor('#E65100')
-                .text(companySettings?.companyName || 'PT SETIA HABA TEKNOLOGI', 40, y);
-            y += 25;
+            // --- HEADER ---
+            // Logo
+            if (companySettings?.logo) {
+                try {
+                    let logoData = companySettings.logo;
+                    if (typeof logoData === 'string' && logoData.includes('base64,')) {
+                        logoData = logoData.split('base64,')[1];
+                        logoData = Buffer.from(logoData, 'base64');
+                    }
+                    doc.image(logoData, 40, y, { width: 60 });
+                } catch (e) { }
+            }
 
-            doc.font('Helvetica').fontSize(8).fillColor('#666666')
-                .text(companySettings?.address || 'Jl. Melajo III BSD Blok C8/21', 40, y);
-            y += 10;
-            doc.text(`Email: ${companySettings?.email || 'info@company.com'} | Telp: ${companySettings?.phone || '021-XXX'}`, 40, y);
+            // Header Box (Right) - Date & No Invoice
+            const boxW = 180;
+            const boxX = pageWidth + 40 - boxW;
+            let boxY = 40;
+
+            // Outer Border
+            doc.rect(boxX, boxY, boxW, 40).strokeColor('#cbd5e1').stroke();
+            doc.moveTo(boxX, boxY + 20).lineTo(boxX + boxW, boxY + 20).stroke();
+            doc.moveTo(boxX + 60, boxY).lineTo(boxX + 60, boxY + 40).stroke();
+
+            drawHeaderBox(doc, boxX, boxY, 'DATE', new Date(invoice.issueDate).toLocaleDateString('id-ID'));
+            drawHeaderBox(doc, boxX, boxY + 20, 'NO INV', invoice.invoiceNumber);
+
+            // Company Info (Left)
+            const textX = 110;
+            const maxAddrWidth = boxX - textX - 20;
+
+            doc.font('Helvetica-Bold').fontSize(18).fillColor(PRIMARY_COLOR)
+                .text(companySettings?.companyName || 'My Company', textX, y, { width: maxAddrWidth });
+
+            let infoY = y + 25;
+            doc.font('Helvetica').fontSize(8).fillColor(TEXT_SECONDARY);
+            doc.text(companySettings?.address || '', textX, infoY, { width: maxAddrWidth });
+            const addrHeight = doc.heightOfString(companySettings?.address || '', { width: maxAddrWidth });
+            infoY += addrHeight + 5;
+
+            doc.text(`${companySettings?.city || ''}`, textX, infoY, { width: maxAddrWidth });
+            infoY += 12;
+            doc.text(`Email: ${companySettings?.email || ''}`, textX, infoY, { width: maxAddrWidth });
+            infoY += 12;
+            doc.text(`Telp: ${companySettings?.phone || ''}`, textX, infoY, { width: maxAddrWidth });
+
+            y = Math.max(infoY + 20, 100);
+            doc.moveTo(40, y).lineTo(pageWidth + 40, y).strokeColor(PRIMARY_COLOR).lineWidth(2).stroke();
             y += 20;
 
-            // Line separator
-            doc.moveTo(40, y).lineTo(pageWidth + 40, y).strokeColor('#E65100').lineWidth(2).stroke();
-            y += 20;
+            // --- CUSTOMER BAR ---
+            doc.rect(40, y, 100, 25).fill(PRIMARY_COLOR);
+            doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10).text('CUSTOMER', 40, y + 8, { width: 100, align: 'center' });
 
-            // Document Info Box
-            doc.font('Helvetica-Bold').fontSize(14).fillColor('#333333')
-                .text('INVOICE', 40, y);
+            doc.rect(140, y, pageWidth - 100, 25).fill(BG_LIGHT);
+            const clientText = `${invoice.client?.name || 'Customer'} / UP : ${invoice.client?.contactName || '-'}`;
+            doc.fillColor(TEXT_COLOR).font('Helvetica-Bold').text(clientText, 150, y + 8);
+            y += 35;
 
-            doc.font('Helvetica').fontSize(10).fillColor('#666666')
-                .text(`No: ${invoice.invoiceNumber}`, pageWidth - 60, y, { width: 100, align: 'right' });
-            y += 15;
-            doc.text(`Date: ${new Date(invoice.issueDate).toLocaleDateString('id-ID')}`, pageWidth - 60, y, { width: 100, align: 'right' });
-            y += 25;
+            // --- INTRO TEXT ---
+            if (invoice.notes) {
+                let introText = invoice.notes;
+                // Replace placeholders
+                const poNum = invoice.poNumber || invoice.projectName || '____';
+                const invNum = invoice.invoiceNumber || '____';
+                introText = introText.replace('{PO_NUMBER}', poNum).replace('{INVOICE_NUMBER}', invNum);
 
-            // Customer Info
-            doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-                .text('Bill To:', 40, y);
-            y += 15;
-            doc.font('Helvetica').fontSize(10).fillColor('#333333')
-                .text(invoice.client?.name || 'Customer Name', 40, y);
-            y += 12;
-            if (invoice.client?.address) {
-                doc.text(invoice.client.address, 40, y);
-                y += 12;
+                doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY)
+                    .text(introText, 40, y, { width: pageWidth });
+
+                const introHeight = doc.heightOfString(introText, { width: pageWidth });
+                y += introHeight + 10;
             }
-            if (invoice.client?.email) {
-                doc.text(invoice.client.email, 40, y);
-                y += 12;
-            }
-            y += 15;
 
-            // Items Table Header
+            // --- ITEMS TABLE ---
             const tableTop = y;
-            const colWidths = [30, 200, 50, 80, 100];
-            const headers = ['No', 'Description', 'Qty', 'Rate', 'Amount'];
+            const colWidths = [100, 175, 40, 90, 90];
+            const headers = ['Model', 'Description', 'Qty', 'Price', 'Total'];
 
-            doc.fillColor('#E65100').rect(40, tableTop, pageWidth, 20).fill();
+            // Header Row
+            doc.rect(40, tableTop, pageWidth, 25).fill(PRIMARY_COLOR);
 
-            let xPos = 45;
+            let xPos = 40;
             doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
+
             headers.forEach((header, i) => {
-                doc.text(header, xPos, tableTop + 6, { width: colWidths[i], align: i > 1 ? 'right' : 'left' });
-                xPos += colWidths[i] + 5;
+                const align = i >= 2 ? 'right' : 'left';
+                doc.text(header, xPos + 5, tableTop + 8, { width: colWidths[i] - 10, align: align });
+                xPos += colWidths[i];
             });
             y = tableTop + 25;
 
-            // Items
-            doc.font('Helvetica').fontSize(9).fillColor('#333333');
+            // Rows - with grouping
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_COLOR);
+
+            let currentGroup = null;
+
             invoice.items?.forEach((item, index) => {
-                xPos = 45;
+                // Check for Group Change
+                if (item.groupName && item.groupName !== currentGroup) {
+                    currentGroup = item.groupName;
+                    doc.rect(40, y, pageWidth, 20).fill('#f1f5f9');
+                    doc.fillColor(PRIMARY_COLOR).font('Helvetica-Bold').text(currentGroup, 45, y + 5);
+                    y += 20;
+                }
+
+                const rowY = y;
+                xPos = 40;
+                doc.fillColor(TEXT_COLOR).font('Helvetica');
+
                 const values = [
-                    (index + 1).toString(),
-                    item.description,
-                    item.quantity.toString(),
+                    item.model || '-',
+                    item.description || '',
+                    `${item.quantity} ${item.unit || 'unit'}`,
                     formatCurrency(Number(item.rate)),
                     formatCurrency(Number(item.amount))
                 ];
 
+                let maxHeight = 0;
                 values.forEach((val, i) => {
-                    doc.text(val, xPos, y, { width: colWidths[i], align: i > 1 ? 'right' : 'left' });
-                    xPos += colWidths[i] + 5;
+                    const h = doc.heightOfString(String(val), { width: colWidths[i] - 10 });
+                    if (h > maxHeight) maxHeight = h;
                 });
-                y += 18;
 
-                // Row separator
-                doc.moveTo(40, y - 3).lineTo(pageWidth + 40, y - 3).strokeColor('#EEEEEE').lineWidth(0.5).stroke();
+                values.forEach((val, i) => {
+                    const align = i >= 2 ? 'right' : 'left';
+                    doc.text(String(val), xPos + 5, rowY + 5, { width: colWidths[i] - 10, align: align });
+                    xPos += colWidths[i];
+                });
+
+                y += Math.max(maxHeight, 15) + 5;
+                doc.moveTo(40, y).lineTo(pageWidth + 40, y).strokeColor('#EEEEEE').lineWidth(0.5).stroke();
+
+                // Page break check
+                if (y > doc.page.height - 200) {
+                    doc.addPage();
+                    y = 40;
+                }
             });
 
             y += 10;
 
-            // Totals
-            const totalsX = pageWidth - 100;
+            // --- TOTALS TABLE (Split Layout like Quotation) ---
+            const splitY = y;
+            const totalsW = 200;
+            const totalsX = pageWidth + 40 - totalsW;
+            let currentTotalY = splitY;
 
-            doc.font('Helvetica').fontSize(10).fillColor('#666666')
-                .text('Subtotal:', totalsX, y, { width: 60 });
-            doc.font('Helvetica-Bold').fillColor('#333333')
-                .text(formatCurrency(Number(invoice.subtotal)), totalsX + 65, y, { width: 80, align: 'right' });
-            y += 15;
+            // Helper function for totals
+            const drawTotalRow = (label, value, isBold = false, isHighlight = false) => {
+                if (isHighlight) {
+                    doc.rect(totalsX, currentTotalY, totalsW, 25).fill('#fef08a');
+                }
+                doc.fillColor(TEXT_COLOR).font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9);
+                doc.text(label, totalsX + 5, currentTotalY + 7, { width: 80 });
+                doc.text('Rp', totalsX + 90, currentTotalY + 7, { width: 30, align: 'right' });
+                doc.text(value.replace('Rp ', ''), totalsX + 130, currentTotalY + 7, { width: 65, align: 'right' });
+                currentTotalY += 25;
+            };
 
+            drawTotalRow('TOTAL', formatCurrency(Number(invoice.subtotal)));
             if (Number(invoice.discount) > 0) {
-                doc.font('Helvetica').fillColor('#666666')
-                    .text('Discount:', totalsX, y, { width: 60 });
-                doc.font('Helvetica-Bold').fillColor('#333333')
-                    .text(`-${formatCurrency(Number(invoice.discount))}`, totalsX + 65, y, { width: 80, align: 'right' });
-                y += 15;
+                let percent = 0;
+                if (invoice.subtotal > 0) {
+                    percent = (Number(invoice.discount) / Number(invoice.subtotal)) * 100;
+                    percent = Math.round(percent * 100) / 100;
+                }
+                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(Number(invoice.discount))}`, false, false);
             }
-
-            doc.font('Helvetica').fillColor('#666666')
-                .text(`PPN (${invoice.taxRate}%):`, totalsX, y, { width: 60 });
-            doc.font('Helvetica-Bold').fillColor('#333333')
-                .text(formatCurrency(Number(invoice.taxAmount)), totalsX + 65, y, { width: 80, align: 'right' });
-            y += 20;
-
-            // Total with highlight
-            doc.fillColor('#E65100').rect(totalsX - 5, y - 5, 155, 25).fill();
-            doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF')
-                .text('TOTAL:', totalsX, y, { width: 60 });
-            doc.text(formatCurrency(Number(invoice.total)), totalsX + 65, y, { width: 80, align: 'right' });
-            y += 35;
-
-            // Terbilang
-            doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666')
-                .text(`Terbilang: ${terbilang(Number(invoice.total))}`, 40, y, { width: pageWidth });
-            y += 25;
-
-            // Bank Details
-            if (invoice.bankAccount) {
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-                    .text('Payment Details:', 40, y);
-                y += 15;
-                doc.font('Helvetica').fontSize(9).fillColor('#666666')
-                    .text(invoice.bankAccount, 40, y);
-                y += 25;
+            if (Number(invoice.taxAmount) > 0) {
+                drawTotalRow(`PPN ${invoice.taxRate}%`, formatCurrency(Number(invoice.taxAmount)));
             }
+            drawTotalRow('Grand Total', formatCurrency(Number(invoice.total)), true, true);
 
-            // Terms
-            if (invoice.terms) {
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-                    .text('Terms & Conditions:', 40, y);
-                y += 15;
-                doc.font('Helvetica').fontSize(8).fillColor('#666666')
-                    .text(invoice.terms, 40, y, { width: pageWidth * 0.6 });
-            }
+            // TERMS (Left)
+            let termsY = splitY + 10;
+            doc.font('Helvetica-Bold').fontSize(8).fillColor(TEXT_COLOR).text('Syarat dan Ketentuan:', 40, termsY);
+            termsY += 15;
 
-            // Signature
-            const sigY = doc.page.height - 120;
-            doc.font('Helvetica').fontSize(9).fillColor('#333333')
-                .text('Authorized Signature', pageWidth - 60, sigY, { width: 100, align: 'center' });
-            doc.moveTo(pageWidth - 20, sigY + 50).lineTo(pageWidth + 80, sigY + 50).strokeColor('#333333').lineWidth(0.5).stroke();
-            doc.text(invoice.signatureName || companySettings?.signatureName || '', pageWidth - 60, sigY + 55, { width: 100, align: 'center' });
+            const termsText = invoice.terms || '';
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY)
+                .text(termsText, 40, termsY, { width: pageWidth - totalsW - 20 });
+
+            const termsHeight = doc.heightOfString(termsText, { width: pageWidth - totalsW - 20 });
+
+            y = Math.max(currentTotalY, termsY + termsHeight + 20) + 20;
+
+            // --- TERBILANG BAR ---
+            doc.rect(40, y, 60, 20).fill(PRIMARY_COLOR);
+            doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9).text('Terbilang :', 40, y + 6, { width: 60, align: 'center' });
+
+            doc.rect(100, y, pageWidth - 60, 20).fill(BG_LIGHT);
+            doc.fillColor(PRIMARY_COLOR).font('Helvetica-Oblique').text(terbilang(Number(invoice.total)), 110, y + 6);
+            y += 40;
+
+            // --- FOOTER / SIGNATURE ---
+            // No bank details for Invoices
+
+            // Signature (Right) - No image, wet signature space
+            const sigY = y;
+            const sigX = pageWidth - 120;
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY).text('Hormat Kami,', sigX, sigY, { align: 'center', width: 140 });
+            doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT_COLOR).text(companySettings?.legalName || companySettings?.companyName || '', sigX, sigY + 12, { align: 'center', width: 140 });
+
+            // Leave space for wet signature (no image)
+            doc.moveTo(sigX, sigY + 60).lineTo(sigX + 140, sigY + 60).strokeColor('#ccc').stroke();
+            doc.text(invoice.signatureName || companySettings?.signatureName || '', sigX, sigY + 65, { align: 'center', width: 140 });
 
             doc.end();
         } catch (error) {
@@ -207,7 +286,7 @@ export function generateInvoicePDF(invoice, companySettings) {
  * Generate Quotation PDF
  */
 export function generateQuotationPDF(quotation, companySettings) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
             const doc = new PDFDocument({ size: 'A4', margin: 40 });
             const chunks = [];
@@ -219,133 +298,283 @@ export function generateQuotationPDF(quotation, companySettings) {
             const pageWidth = doc.page.width - 80;
             let y = 40;
 
-            // Header
-            doc.font('Helvetica-Bold').fontSize(16).fillColor('#E65100')
-                .text(companySettings?.companyName || 'PT SETIA HABA TEKNOLOGI', 40, y);
-            y += 25;
-
-            doc.font('Helvetica').fontSize(8).fillColor('#666666')
-                .text(companySettings?.address || 'Company Address', 40, y);
-            y += 10;
-            doc.text(`Email: ${companySettings?.email || 'info@company.com'} | Telp: ${companySettings?.phone || '021-XXX'}`, 40, y);
-            y += 20;
-
-            // Line separator
-            doc.moveTo(40, y).lineTo(pageWidth + 40, y).strokeColor('#E65100').lineWidth(2).stroke();
-            y += 20;
-
-            // Document Info
-            doc.font('Helvetica-Bold').fontSize(14).fillColor('#333333')
-                .text('QUOTATION / PENAWARAN HARGA', 40, y);
-
-            doc.font('Helvetica').fontSize(10).fillColor('#666666')
-                .text(`No: ${quotation.quotationNumber}`, pageWidth - 60, y, { width: 100, align: 'right' });
-            y += 15;
-            doc.text(`Date: ${new Date(quotation.issueDate).toLocaleDateString('id-ID')}`, pageWidth - 60, y, { width: 100, align: 'right' });
-            y += 15;
-            doc.text(`Valid Until: ${new Date(quotation.validUntil).toLocaleDateString('id-ID')}`, pageWidth - 60, y, { width: 100, align: 'right' });
-            y += 25;
-
-            // Customer Info
-            doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-                .text('To:', 40, y);
-            y += 15;
-            doc.font('Helvetica').fontSize(10).fillColor('#333333')
-                .text(quotation.client?.name || 'Customer Name', 40, y);
-            y += 12;
-            if (quotation.client?.contactName) {
-                doc.text(`UP: ${quotation.client.contactName}`, 40, y);
-                y += 12;
+            // --- HEADER ---
+            // Logo
+            if (companySettings?.logo) {
+                try {
+                    let logoData = companySettings.logo;
+                    if (typeof logoData === 'string' && logoData.includes('base64,')) {
+                        logoData = logoData.split('base64,')[1];
+                        logoData = Buffer.from(logoData, 'base64');
+                    }
+                    doc.image(logoData, 40, y, { width: 60 });
+                } catch (e) { }
             }
-            y += 15;
 
-            // Items Table
+            // Header Box (Right) - Date & No
+            const boxW = 180;
+            const boxX = pageWidth + 40 - boxW;
+            let boxY = 40;
+
+            // Outer Border
+            doc.rect(boxX, boxY, boxW, 40).strokeColor('#cbd5e1').stroke();
+            doc.moveTo(boxX, boxY + 20).lineTo(boxX + boxW, boxY + 20).stroke();
+            doc.moveTo(boxX + 60, boxY).lineTo(boxX + 60, boxY + 40).stroke();
+
+            drawHeaderBox(doc, boxX, boxY, 'DATE', new Date(quotation.issueDate).toLocaleDateString('id-ID'));
+            drawHeaderBox(doc, boxX, boxY + 20, 'NO SPH', quotation.quotationNumber);
+
+            // Company Info (Left) - Avoid overlap with Box
+            const textX = 110;
+            const maxAddrWidth = boxX - textX - 20; // Ensure text stops before the box
+
+            doc.font('Helvetica-Bold').fontSize(18).fillColor(PRIMARY_COLOR)
+                .text(companySettings?.companyName || 'My Company', textX, y, { width: maxAddrWidth });
+
+            let infoY = y + 25;
+            doc.font('Helvetica').fontSize(8).fillColor(TEXT_SECONDARY);
+            doc.text(companySettings?.address || '', textX, infoY, { width: maxAddrWidth });
+            // Calculate height of address to push down email/phone
+            const addrHeight = doc.heightOfString(companySettings?.address || '', { width: maxAddrWidth });
+            infoY += addrHeight + 5;
+
+            doc.text(`${companySettings?.city || ''}`, textX, infoY, { width: maxAddrWidth });
+            infoY += 12;
+            doc.text(`Email: ${companySettings?.email || ''}`, textX, infoY, { width: maxAddrWidth });
+            infoY += 12;
+            doc.text(`Telp: ${companySettings?.phone || ''}`, textX, infoY, { width: maxAddrWidth });
+
+            y = Math.max(infoY + 20, 100);
+            doc.moveTo(40, y).lineTo(pageWidth + 40, y).strokeColor(PRIMARY_COLOR).lineWidth(2).stroke();
+            y += 20;
+
+            // --- CUSTOMER BAR ---
+            // "CUSTOMER" Blue Box
+            doc.rect(40, y, 100, 25).fill(PRIMARY_COLOR);
+            doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10).text('CUSTOMER', 40, y + 8, { width: 100, align: 'center' });
+
+            // Name Light Blue Box
+            doc.rect(140, y, pageWidth - 100, 25).fill(BG_LIGHT);
+            const clientText = `${quotation.client?.name || 'Customer'} / UP : ${quotation.client?.contactName || '-'}`;
+            doc.fillColor(TEXT_COLOR).font('Helvetica-Bold').text(clientText, 150, y + 8);
+            y += 35;
+
+            // --- INTRO TEXT ---
+            if (quotation.notes) {
+                const poNum = quotation.projectName || quotation.poNumber || '____';
+                const introText = quotation.notes.replace('{PO_NUMBER}', poNum);
+
+                doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY)
+                    .text(introText, 40, y, { width: pageWidth });
+
+                const introHeight = doc.heightOfString(introText, { width: pageWidth });
+                y += introHeight + 10;
+            }
+
+            // Intro Text
+            if (quotation.poNumber || quotation.documentIntroText) {
+                const intro = `Dengan ini kami sampaikan Rincian order PO : ${quotation.poNumber || '____'} Sebagai berikut :`;
+                doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY).text(intro, 40, y);
+                y += 20;
+            }
+
+            // --- ITEMS TABLE ---
             const tableTop = y;
-            const colWidths = [30, 200, 50, 80, 100];
-            const headers = ['No', 'Description', 'Qty', 'Rate', 'Amount'];
+            // Removed 'No' column to match Preview.
+            // Previous: [30, 80, 160, 40, 85, 100] -> Total 495
+            // New widths: Model(100), Desc(175), Qty(40), Price(90), Total(90) -> Total 495
+            const colWidths = [100, 175, 40, 90, 90];
+            const headers = ['Model', 'Description', 'Qty', 'Price', 'Total'];
 
-            doc.fillColor('#E65100').rect(40, tableTop, pageWidth, 20).fill();
+            // Header Row
+            doc.rect(40, tableTop, pageWidth, 25).fill(PRIMARY_COLOR);
 
-            let xPos = 45;
+            let xPos = 40;
             doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
+
             headers.forEach((header, i) => {
-                doc.text(header, xPos, tableTop + 6, { width: colWidths[i], align: i > 1 ? 'right' : 'left' });
-                xPos += colWidths[i] + 5;
+                const align = i >= 2 ? 'right' : 'left'; // Qty, Price, Total align right
+                doc.text(header, xPos + 5, tableTop + 8, { width: colWidths[i] - 10, align: align });
+                xPos += colWidths[i];
             });
             y = tableTop + 25;
 
-            // Items
-            doc.font('Helvetica').fontSize(9).fillColor('#333333');
+            // Rows
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_COLOR);
+
+            let currentGroup = null;
+
             quotation.items?.forEach((item, index) => {
-                xPos = 45;
+                // Check for Group Change
+                if (item.groupName && item.groupName !== currentGroup) {
+                    currentGroup = item.groupName;
+                    // Render Group Header
+                    doc.rect(40, y, pageWidth, 20).fill('#f1f5f9'); // Light gray for group
+                    doc.fillColor(PRIMARY_COLOR).font('Helvetica-Bold').text(currentGroup, 45, y + 5);
+                    y += 20;
+                }
+
+                const rowY = y;
+                xPos = 40;
+                doc.fillColor(TEXT_COLOR).font('Helvetica'); // Reset font
+
                 const values = [
-                    (index + 1).toString(),
-                    item.description,
-                    item.quantity.toString(),
+                    item.model || '-',
+                    item.description || '',
+                    `${item.quantity} ${item.unit || 'unit'}`,
                     formatCurrency(Number(item.rate)),
                     formatCurrency(Number(item.amount))
                 ];
 
+                let maxHeight = 20;
                 values.forEach((val, i) => {
-                    doc.text(val, xPos, y, { width: colWidths[i], align: i > 1 ? 'right' : 'left' });
-                    xPos += colWidths[i] + 5;
+                    const h = doc.heightOfString(val, { width: colWidths[i] - 10 });
+                    if (h + 10 > maxHeight) maxHeight = h + 10;
                 });
-                y += 18;
-                doc.moveTo(40, y - 3).lineTo(pageWidth + 40, y - 3).strokeColor('#EEEEEE').lineWidth(0.5).stroke();
+
+                // Vertical grid lines
+                doc.lineWidth(0.5).strokeColor('#e2e8f0');
+                let vX = 40;
+                for (let i = 0; i < colWidths.length; i++) {
+                    doc.rect(vX, rowY, colWidths[i], maxHeight).stroke();
+                    vX += colWidths[i];
+                }
+
+                // Row content
+                xPos = 40;
+                values.forEach((val, i) => {
+                    const align = i >= 2 ? 'right' : 'left';
+                    doc.text(val, xPos + 5, rowY + 5, { width: colWidths[i] - 10, align: align });
+                    xPos += colWidths[i];
+                });
+
+                y += maxHeight;
+
+                if (y > doc.page.height - 100) {
+                    doc.addPage();
+                    y = 40;
+                }
             });
 
-            y += 10;
-
-            // Totals
-            const totalsX = pageWidth - 100;
-
-            doc.font('Helvetica').fontSize(10).fillColor('#666666')
-                .text('Subtotal:', totalsX, y, { width: 60 });
-            doc.font('Helvetica-Bold').fillColor('#333333')
-                .text(formatCurrency(Number(quotation.subtotal)), totalsX + 65, y, { width: 80, align: 'right' });
-            y += 15;
-
-            if (Number(quotation.discount) > 0) {
-                doc.font('Helvetica').fillColor('#666666')
-                    .text('Discount:', totalsX, y, { width: 60 });
-                doc.font('Helvetica-Bold').fillColor('#333333')
-                    .text(`-${formatCurrency(Number(quotation.discount))}`, totalsX + 65, y, { width: 80, align: 'right' });
-                y += 15;
-            }
-
-            doc.font('Helvetica').fillColor('#666666')
-                .text(`PPN (${quotation.taxRate}%):`, totalsX, y, { width: 60 });
-            doc.font('Helvetica-Bold').fillColor('#333333')
-                .text(formatCurrency(Number(quotation.taxAmount)), totalsX + 65, y, { width: 80, align: 'right' });
             y += 20;
 
-            // Total
-            doc.fillColor('#E65100').rect(totalsX - 5, y - 5, 155, 25).fill();
-            doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF')
-                .text('TOTAL:', totalsX, y, { width: 60 });
-            doc.text(formatCurrency(Number(quotation.total)), totalsX + 65, y, { width: 80, align: 'right' });
-            y += 35;
+            // --- BOTTOM SECTION ---
+            const splitY = y;
 
-            // Terbilang
-            doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666666')
-                .text(`Terbilang: ${terbilang(Number(quotation.total))}`, 40, y, { width: pageWidth });
-            y += 25;
+            // TOTALS TABLE (Right)
+            const totalsW = 220;
+            const totalsX = pageWidth + 40 - totalsW;
+            let currentTotalY = splitY;
 
-            // Terms
-            if (quotation.terms) {
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#333333')
-                    .text('Terms & Conditions:', 40, y);
-                y += 15;
-                doc.font('Helvetica').fontSize(8).fillColor('#666666')
-                    .text(quotation.terms, 40, y, { width: pageWidth * 0.6 });
+            const drawTotalRow = (label, value, isBold = false, isYellow = false) => {
+                const h = 20;
+                doc.rect(totalsX, currentTotalY, totalsW, h).strokeColor('#cbd5e1').stroke();
+                doc.rect(totalsX, currentTotalY, 100, h).fill(isYellow ? '#fef08a' : '#f8fafc');
+                doc.rect(totalsX + 100, currentTotalY, totalsW - 100, h).fill(isYellow ? '#fef08a' : '#ffffff');
+
+                doc.fillColor(TEXT_COLOR).font('Helvetica-Bold').fontSize(9).text(label, totalsX + 5, currentTotalY + 5);
+                doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').text(value, totalsX + 105, currentTotalY + 5, { width: totalsW - 110, align: 'right' });
+
+                if (isYellow) {
+                    doc.fillColor(PRIMARY_COLOR);
+                    doc.text(value, totalsX + 105, currentTotalY + 5, { width: totalsW - 110, align: 'right' });
+                }
+
+                currentTotalY += h;
+            };
+
+            drawTotalRow('TOTAL', formatCurrency(Number(quotation.subtotal)));
+            if (Number(quotation.discount) > 0) {
+                // Calculate percent if not present (DB only stores amount)
+                let percent = quotation.discountPercent;
+                if (!percent && Number(quotation.subtotal) > 0) {
+                    percent = (Number(quotation.discount) / Number(quotation.subtotal)) * 100;
+                    percent = Math.round(percent * 100) / 100; // Round to 2 decimals
+                }
+                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(Number(quotation.discount))}`, false, false);
+            }
+            if (Number(quotation.taxAmount) > 0) {
+                drawTotalRow(`PPN ${quotation.taxRate}%`, formatCurrency(Number(quotation.taxAmount)));
+            }
+            drawTotalRow('Grand Total', formatCurrency(Number(quotation.total)), true, true);
+
+            // TERMS (Left)
+            let termsY = splitY + 10; // Added spacing
+            doc.font('Helvetica-Bold').fontSize(8).fillColor(TEXT_COLOR).text('Syarat dan Ketentuan:', 40, termsY);
+            termsY += 15; // Increased spacing
+
+            const termsText = quotation.terms || '';
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY)
+                .text(termsText, 40, termsY, { width: pageWidth - totalsW - 20 });
+
+            // Calculate dynamic height of terms to prevent overlap
+            const termsHeight = doc.heightOfString(termsText, { width: pageWidth - totalsW - 20 });
+
+            // Ensure y starts below terms OR totals, whichever is lower
+            y = Math.max(currentTotalY, termsY + termsHeight + 20) + 20;
+
+            // --- TERBILANG BAR ---
+            doc.rect(40, y, 60, 20).fill(PRIMARY_COLOR);
+            doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9).text('Terbilang :', 40, y + 6, { width: 60, align: 'center' });
+
+            doc.rect(100, y, pageWidth - 60, 20).fill(BG_LIGHT);
+            doc.fillColor(PRIMARY_COLOR).font('Helvetica-Oblique').text(terbilang(Number(quotation.total)), 110, y + 6);
+            y += 40;
+
+            // --- FOOTER ---
+            // Bank (Left)
+            // Logic to Ensure Bank shows Name (AN)
+            let bankText = null;
+            if (quotation.bankAccount) {
+                // Check if it already has the full format (e.g. from previous save)
+                if (quotation.bankAccount.includes('\n') || (quotation.bankAccount.toLowerCase().includes('an :') && !quotation.bankAccount.includes('undefined'))) {
+                    bankText = quotation.bankAccount;
+                } else {
+                    // Try to match with company settings to get full details
+                    // Robust check: match by exact number if possible, or part of string
+                    const matchedBank = companySettings?.bankAccounts?.find(b =>
+                        quotation.bankAccount.includes(b.accountNumber || b.accountNum)
+                    );
+
+                    if (matchedBank) {
+                        const holder = matchedBank.holderName || matchedBank.accountHolder || '';
+                        bankText = `${matchedBank.bankName}\n${matchedBank.accountNumber || matchedBank.accountNum}\nAN : ${holder}`;
+                    } else {
+                        // If no match found, use what we have, but clean "undefined"
+                        bankText = quotation.bankAccount.replace(' - undefined', '').replace('undefined', '');
+                    }
+                }
+            } else if (companySettings?.bankAccounts && companySettings.bankAccounts.length > 0) {
+                // Fallback default
+                const b = companySettings.bankAccounts[0];
+                const holder = b.holderName || b.accountHolder || '';
+                bankText = `${b.bankName}\n${b.accountNumber || b.accountNum}\nAN : ${holder}`;
             }
 
-            // Signature
-            const sigY = doc.page.height - 120;
-            doc.font('Helvetica').fontSize(9).fillColor('#333333')
-                .text('Hormat Kami,', pageWidth - 60, sigY, { width: 100, align: 'center' });
-            doc.moveTo(pageWidth - 20, sigY + 50).lineTo(pageWidth + 80, sigY + 50).strokeColor('#333333').lineWidth(0.5).stroke();
-            doc.text(companySettings?.signatureName || '', pageWidth - 60, sigY + 55, { width: 100, align: 'center' });
+            if (bankText) {
+                const bankY = y;
+                doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT_COLOR).text('Bank Details:', 40, bankY);
+                doc.font('Helvetica').fontSize(9).text(bankText, 40, bankY + 12);
+            }
+
+            // Signature (Right)
+            const sigY = y;
+            const sigX = pageWidth - 120;
+            doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY).text('Hormat Kami,', sigX, sigY, { align: 'center', width: 140 });
+            doc.font('Helvetica-Bold').fontSize(10).fillColor(TEXT_COLOR).text(companySettings?.legalName || companySettings?.companyName || '', sigX, sigY + 12, { align: 'center', width: 140 });
+
+            if (companySettings?.signatureImage || quotation.signatureName) {
+                if (companySettings?.signatureImage && typeof companySettings.signatureImage === 'string' && companySettings.signatureImage.includes('base64,')) {
+                    try {
+                        const sigData = Buffer.from(companySettings.signatureImage.split('base64,')[1], 'base64');
+                        // INCREASED IMAGE SIZE to 120 (approx 2x)
+                        doc.image(sigData, sigX + 10, sigY + 30, { width: 120 });
+                    } catch (e) { }
+                }
+            }
+
+            doc.moveTo(sigX, sigY + 90).lineTo(sigX + 140, sigY + 90).strokeColor('#ccc').stroke();
+            doc.text(quotation.signatureName || companySettings?.signatureName || '', sigX, sigY + 95, { align: 'center', width: 140 });
 
             doc.end();
         } catch (error) {

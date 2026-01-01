@@ -1,44 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Copy, Plus, ArrowRight, Search, Check } from 'lucide-react';
 import { Button, StatusBadge } from '../components/ui';
-
-// Sample quotations that can be converted
-const quotationsData = [
-    {
-        id: 'QT-2025-0011',
-        client: 'CV SARI JAYA',
-        contactName: 'Pak Reza',
-        date: '2025-01-10',
-        total: 593118787.50,
-        status: 'accepted',
-        items: [
-            {
-                name: 'PERALATAN UTAMA', descriptions: [
-                    { model: 'MGP24X', description: 'Digital Mixer 24CH', qty: 1, unit: 'unit', rate: 36000000 }
-                ]
-            }
-        ]
-    },
-    {
-        id: 'QT-2025-0010',
-        client: 'PT Global Tech',
-        contactName: 'Ibu Sari',
-        date: '2025-01-08',
-        total: 127500000,
-        status: 'accepted',
-        items: []
-    },
-    {
-        id: 'QT-2025-0009',
-        client: 'UD Maju Bersama',
-        contactName: 'Pak Andi',
-        date: '2025-01-05',
-        total: 85000000,
-        status: 'sent',
-        items: []
-    },
-];
+import { quotations } from '../lib/api';
 
 // Format currency
 const formatIDR = (amount) => {
@@ -50,15 +14,44 @@ export default function NewInvoiceSelector() {
     const [selectedQuotation, setSelectedQuotation] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [step, setStep] = useState('select'); // 'select' or 'choose-quotation'
+    const [quotationsData, setQuotationsData] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    // Fetch quotations when step changes to 'choose-quotation'
+    useEffect(() => {
+        if (step === 'choose-quotation') {
+            const fetchQuotations = async () => {
+                setLoading(true);
+                try {
+                    const data = await quotations.getAll();
+                    // Transform data for display
+                    setQuotationsData(data.map(q => ({
+                        id: q.id,
+                        displayId: q.quotationNumber,
+                        client: q.client?.name || 'Unknown',
+                        contactName: q.client?.contactName || '',
+                        date: q.issueDate,
+                        total: Number(q.total),
+                        status: q.status,
+                    })));
+                } catch (error) {
+                    console.error('Failed to fetch quotations:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchQuotations();
+        }
+    }, [step]);
 
     const filteredQuotations = quotationsData.filter(q =>
-        q.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (q.displayId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         q.client.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleConvertQuotation = () => {
         if (selectedQuotation) {
-            // Navigate to invoice form with quotation data
+            // Navigate to invoice form with quotation ID (use actual DB id)
             navigate(`/invoices/new?from=quotation&ref=${selectedQuotation.id}`);
         }
     };
@@ -149,35 +142,46 @@ export default function NewInvoiceSelector() {
 
                     {/* Quotation List */}
                     <div className="divide-y divide-border-light dark:divide-border-dark max-h-96 overflow-y-auto">
-                        {filteredQuotations.map((quotation) => (
-                            <button
-                                key={quotation.id}
-                                onClick={() => setSelectedQuotation(quotation)}
-                                className={`w-full p-4 text-left hover:bg-primary/5 transition-colors flex items-center gap-4 ${selectedQuotation?.id === quotation.id ? 'bg-primary/10 border-l-4 border-primary' : ''
-                                    }`}
-                            >
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <span className="font-semibold text-text-main dark:text-white">{quotation.id}</span>
-                                        <StatusBadge status={quotation.status} />
+                        {loading ? (
+                            <div className="p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                <p className="text-sm text-text-secondary mt-2">Loading quotations...</p>
+                            </div>
+                        ) : filteredQuotations.length === 0 ? (
+                            <div className="p-8 text-center">
+                                <p className="text-sm text-text-secondary">No quotations found.</p>
+                            </div>
+                        ) : (
+                            filteredQuotations.map((quotation) => (
+                                <button
+                                    key={quotation.id}
+                                    onClick={() => setSelectedQuotation(quotation)}
+                                    className={`w-full p-4 text-left hover:bg-primary/5 transition-colors flex items-center gap-4 ${selectedQuotation?.id === quotation.id ? 'bg-primary/10 border-l-4 border-primary' : ''
+                                        }`}
+                                >
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <span className="font-semibold text-text-main dark:text-white">{quotation.displayId}</span>
+                                            <StatusBadge status={quotation.status} />
+                                        </div>
+                                        <p className="text-sm text-text-secondary">
+                                            {quotation.client} {quotation.contactName && `• ${quotation.contactName}`}
+                                        </p>
+                                        <p className="text-xs text-text-secondary mt-1">
+                                            {new Date(quotation.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </p>
                                     </div>
-                                    <p className="text-sm text-text-secondary">
-                                        {quotation.client} • {quotation.contactName}
-                                    </p>
-                                    <p className="text-xs text-text-secondary mt-1">
-                                        {new Date(quotation.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-text-main dark:text-white">{formatIDR(quotation.total)}</p>
-                                </div>
-                                {selectedQuotation?.id === quotation.id && (
-                                    <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center">
-                                        <Check size={14} />
+                                    <div className="text-right">
+                                        <p className="font-bold text-text-main dark:text-white">{formatIDR(quotation.total)}</p>
                                     </div>
-                                )}
-                            </button>
-                        ))}
+                                    {selectedQuotation?.id === quotation.id && (
+                                        <div className="size-6 rounded-full bg-primary text-white flex items-center justify-center">
+                                            <Check size={14} />
+                                        </div>
+                                    )}
+                                </button>
+                            ))
+                        )}
                     </div>
 
                     {/* Footer */}

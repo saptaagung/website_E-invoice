@@ -36,6 +36,7 @@ function AppRoutes() {
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/test" element={<div className="p-10 text-red-500 text-4xl font-bold bg-white h-screen">TEST PAGE IS WORKING</div>} />
 
       {/* Protected App Routes */}
       <Route path="/" element={
@@ -45,12 +46,15 @@ function AppRoutes() {
       }>
         <Route index element={<Dashboard />} />
         <Route path="quotations" element={<Documents />} />
+        <Route path="documents" element={<Documents />} />
         <Route path="quotations/new" element={<InvoiceForm />} />
         <Route path="quotations/:id" element={<InvoiceForm />} />
+        <Route path="quotations/:id/edit" element={<InvoiceForm />} />
         <Route path="invoices" element={<Documents />} />
         <Route path="invoices/select" element={<NewInvoiceSelector />} />
         <Route path="invoices/new" element={<InvoiceForm />} />
         <Route path="invoices/:id" element={<InvoiceForm />} />
+        <Route path="invoices/:id/edit" element={<InvoiceForm />} />
         <Route path="clients" element={<Clients />} />
         <Route path="settings" element={<Settings />} />
       </Route>
