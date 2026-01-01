@@ -8,6 +8,8 @@ export function StatusBadge({ status }) {
         accepted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
         rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
         partial: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+        expired: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+        cancelled: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-600',
     };
 
     const style = statusStyles[status.toLowerCase()] || statusStyles.draft;
@@ -30,8 +32,8 @@ export function KPICard({ icon: Icon, iconBgColor, title, value, trend, trendVal
                 </div>
                 {trendValue && (
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full flex items-center gap-1 ${isPositiveTrend
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
                         }`}>
                         {trendValue}
                     </span>

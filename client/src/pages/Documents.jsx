@@ -36,13 +36,13 @@ const getColor = (name) => {
 };
 
 // Status options for different document types
-const quotationStatuses = ['draft', 'pending', 'sent', 'accepted', 'rejected'];
-const invoiceStatuses = ['draft', 'pending', 'sent', 'paid', 'overdue', 'cancelled'];
+const quotationStatuses = ['draft', 'sent', 'accepted', 'rejected', 'expired'];
+const invoiceStatuses = ['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled'];
 
 const tabs = [
-    { key: 'all', label: 'All Documents', count: null },
-    { key: 'quotations', label: 'Quotations', count: null },
-    { key: 'invoices', label: 'Invoices', count: null },
+    { key: 'all', label: 'Semua Dokumen', count: null },
+    { key: 'quotations', label: 'Penawaran', count: null },
+    { key: 'invoices', label: 'Faktur', count: null },
 ];
 
 // Status Dropdown Component
@@ -67,7 +67,7 @@ function StatusDropdown({ currentStatus, statuses, onStatusChange, itemId }) {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute left-0 mt-2 w-36 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-border-light dark:border-border-dark z-50 py-1 overflow-hidden">
-                        <p className="px-3 py-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">Change Status</p>
+                        <p className="px-3 py-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">Ubah Status</p>
                         {statuses.map((status) => (
                             <button
                                 key={status}
@@ -104,6 +104,8 @@ export default function Documents() {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
+    const [pageSize, setPageSize] = useState(20);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // State for documents
     const [quotationsData, setQuotationsData] = useState([]);
@@ -176,10 +178,10 @@ export default function Documents() {
         }
     };
 
-    // Action handlers - View shows PDF
+    // Action handlers - View shows read-only preview
     const handleView = (item) => {
         const basePath = item.type === 'quotation' ? '/quotations' : '/invoices';
-        navigate(`${basePath}/${item.id}`);
+        navigate(`${basePath}/${item.id}?view=true`);
     };
 
     const handleEdit = (item) => {
@@ -205,8 +207,8 @@ export default function Documents() {
 
     const handleDelete = async (item) => {
         const confirmMessage = item.type === 'quotation'
-            ? `Are you sure you want to delete quotation ${item.displayId}?`
-            : `Are you sure you want to delete invoice ${item.displayId}?`;
+            ? `Apakah Anda yakin ingin menghapus penawaran ${item.displayId}?`
+            : `Apakah Anda yakin ingin menghapus faktur ${item.displayId}?`;
 
         if (!window.confirm(confirmMessage)) {
             return;
@@ -237,8 +239,8 @@ export default function Documents() {
 
     const getNewButtonLabel = () => {
         switch (activeTab) {
-            case 'invoices': return 'New Invoice';
-            default: return 'New Quotation';
+            case 'invoices': return 'Faktur Baru';
+            default: return 'Penawaran Baru';
         }
     };
 
@@ -267,6 +269,12 @@ export default function Documents() {
         item.id.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+
     return (
         <div className="flex flex-col gap-6 pb-10">
             {/* Main Card */}
@@ -276,7 +284,7 @@ export default function Documents() {
                 <div className="border-b border-border-light dark:border-border-dark px-6 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center pt-4 pb-3">
                         <h1 className="text-lg font-bold text-text-main dark:text-white">
-                            {isQuotationsPage ? 'Quotations' : (isInvoicesPage ? 'Invoices' : 'Documents')}
+                            {isQuotationsPage ? 'Penawaran' : (isInvoicesPage ? 'Faktur' : 'Dokumen')}
                         </h1>
                     </div>
 
@@ -297,7 +305,7 @@ export default function Documents() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by client or ID..."
+                            placeholder="Cari berdasarkan klien atau ID..."
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-text-secondary"
                         />
                     </div>
@@ -305,7 +313,7 @@ export default function Documents() {
                     <div className="flex gap-3 flex-wrap justify-center lg:justify-end">
                         <button className="flex items-center gap-2 px-3 py-2 bg-background-light dark:bg-background-dark text-sm font-medium rounded-xl border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white transition-colors">
                             <Calendar size={16} />
-                            <span>Date</span>
+                            <span>Tanggal</span>
                             <ChevronDown size={14} />
                         </button>
                         <button className="flex items-center gap-2 px-3 py-2 bg-background-light dark:bg-background-dark text-sm font-medium rounded-xl border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white transition-colors">
@@ -322,15 +330,15 @@ export default function Documents() {
                         <thead className="border-b border-border-light dark:border-border-dark bg-background-light/50 dark:bg-background-dark/30">
                             <tr>
                                 <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">ID</th>
-                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Client</th>
-                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Date Issued</th>
-                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Amount</th>
+                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Klien</th>
+                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Tanggal</th>
+                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Jumlah</th>
                                 <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-left">Status</th>
-                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-right">Actions</th>
+                                <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-right">Tindakan</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
-                            {filteredData.map((item) => (
+                            {paginatedData.map((item) => (
                                 <tr key={item.id} className="group hover:bg-background-light dark:hover:bg-background-dark/30 transition-colors">
                                     <td className="py-4 px-6">
                                         <button
@@ -402,26 +410,48 @@ export default function Documents() {
                 {/* Empty State */}
                 {filteredData.length === 0 && (
                     <div className="flex-1 flex flex-col items-center justify-center py-12">
-                        <p className="text-text-secondary text-sm">No documents found matching your search.</p>
+                        <p className="text-text-secondary text-sm">Tidak ada dokumen yang ditemukan.</p>
                     </div>
                 )}
 
                 {/* Pagination */}
-                <div className="px-6 py-4 flex items-center justify-between border-t border-border-light dark:border-border-dark mt-auto">
-                    <p className="text-sm text-text-secondary dark:text-gray-400">
-                        Showing <span className="font-medium text-text-main dark:text-white">1</span> to{' '}
-                        <span className="font-medium text-text-main dark:text-white">{filteredData.length}</span> of{' '}
-                        <span className="font-medium text-text-main dark:text-white">{data.length}</span> documents
-                    </p>
+                <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border-light dark:border-border-dark mt-auto">
+                    <div className="flex items-center gap-4">
+                        <p className="text-sm text-text-secondary dark:text-gray-400">
+                            Menampilkan <span className="font-medium text-text-main dark:text-white">{startIndex + 1}</span> sampai{' '}
+                            <span className="font-medium text-text-main dark:text-white">{Math.min(endIndex, filteredData.length)}</span> dari{' '}
+                            <span className="font-medium text-text-main dark:text-white">{filteredData.length}</span> dokumen
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-text-secondary">Tampilkan:</span>
+                            <select
+                                value={pageSize}
+                                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                className="px-2 py-1 border border-border-light dark:border-border-dark rounded-lg text-sm bg-surface-light dark:bg-surface-dark text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                        </div>
+                    </div>
                     <div className="flex gap-2">
                         <button
-                            disabled
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
                             className="px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-text-secondary hover:bg-background-light dark:hover:bg-background-dark/30 hover:text-text-main dark:hover:text-white transition-colors disabled:opacity-50"
                         >
-                            Previous
+                            Sebelumnya
                         </button>
-                        <button className="px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-text-secondary hover:bg-background-light dark:hover:bg-background-dark/30 hover:text-text-main dark:hover:text-white transition-colors">
-                            Next
+                        <span className="px-3 py-1.5 text-sm text-text-secondary">
+                            Halaman {currentPage} dari {totalPages || 1}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-text-secondary hover:bg-background-light dark:hover:bg-background-dark/30 hover:text-text-main dark:hover:text-white transition-colors disabled:opacity-50"
+                        >
+                            Berikutnya
                         </button>
                     </div>
                 </div>

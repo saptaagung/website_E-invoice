@@ -1,130 +1,207 @@
-# InvoiceFlow - Invoice & Quotation Management System
+# InvoiceFlow - Sistem Faktur & Penawaran
 
-A full-stack web application for creating and managing invoices, quotations, and SPH (Surat Penawaran Harga) documents. Built with modern technologies including React, Express.js, Prisma, and PostgreSQL.
+Aplikasi web lengkap untuk mengelola faktur dan penawaran (quotation) dengan antarmuka modern dalam Bahasa Indonesia.
 
-![Status](https://img.shields.io/badge/status-development-orange)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## 🏗️ Arsitektur Proyek
 
----
+```
+Webstie-Invoice/
+├── client/                 # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── components/     # Komponen UI yang dapat digunakan ulang
+│   │   │   ├── ui/         # Komponen dasar (Button, Badge, Card, dll)
+│   │   │   ├── Header.jsx  # Header dengan pencarian
+│   │   │   ├── Sidebar.jsx # Navigasi sidebar
+│   │   │   └── Layout.jsx  # Layout utama aplikasi
+│   │   ├── context/        # React Context
+│   │   │   └── AuthContext.jsx  # Autentikasi state
+│   │   ├── lib/            # Utilitas & API
+│   │   │   └── api.js      # Konfigurasi API client
+│   │   ├── pages/          # Halaman-halaman
+│   │   │   ├── Dashboard.jsx     # Dashboard utama
+│   │   │   ├── Login.jsx         # Halaman login
+│   │   │   ├── Register.jsx      # Halaman registrasi
+│   │   │   ├── Documents.jsx     # Daftar dokumen
+│   │   │   ├── Clients.jsx       # Manajemen klien
+│   │   │   ├── InvoiceForm.jsx   # Form faktur/penawaran
+│   │   │   ├── NewInvoiceSelector.jsx  # Pemilih pembuatan faktur
+│   │   │   └── Settings.jsx      # Pengaturan perusahaan
+│   │   ├── App.jsx         # Router & routes
+│   │   ├── main.jsx        # Entry point
+│   │   └── index.css       # Tailwind CSS config
+│   ├── package.json
+│   └── vite.config.js
+│
+├── server/                 # Backend (Express + Prisma)
+│   ├── src/
+│   │   ├── lib/
+│   │   │   ├── prisma.js   # Prisma client instance
+│   │   │   └── pdf.js      # Generator PDF (faktur & penawaran)
+│   │   ├── middleware/
+│   │   │   └── auth.js     # JWT authentication middleware
+│   │   ├── routes/
+│   │   │   ├── auth.js     # Autentikasi (login, register)
+│   │   │   ├── clients.js  # CRUD klien
+│   │   │   ├── invoices.js # CRUD faktur
+│   │   │   ├── quotations.js # CRUD penawaran
+│   │   │   └── settings.js # Pengaturan perusahaan
+│   │   └── index.js        # Express server entry
+│   ├── prisma/
+│   │   └── schema.prisma   # Database schema
+│   ├── package.json
+│   └── .env.example
+│
+└── docker-compose.yml      # PostgreSQL database container
+```
 
-## 📋 Table of Contents
-
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Prerequisites](#-prerequisites)
-- [Getting Started](#-getting-started)
-  - [1. Clone the Repository](#1-clone-the-repository)
-  - [2. Set Up the Database](#2-set-up-the-database)
-  - [3. Configure the Server](#3-configure-the-server)
-  - [4. Configure the Client](#4-configure-the-client)
-  - [5. Run the Application](#5-run-the-application)
-- [Project Structure](#-project-structure)
-- [API Endpoints](#-api-endpoints)
-- [Database Schema](#-database-schema)
-- [Environment Variables](#-environment-variables)
-- [Available Scripts](#-available-scripts)
-- [Troubleshooting](#-troubleshooting)
-- [Contributing](#-contributing)
-
----
-
-## ✨ Features
-
-- **User Authentication** - Secure login and registration with JWT tokens
-- **Client Management** - Add, edit, and manage customer/client information
-- **Invoice Management** - Create, edit, and track invoices with multiple line items
-- **Quotation Management** - Generate professional quotations for clients
-- **SPH (Surat Penawaran Harga)** - Indonesian-style price offering letters
-- **PDF Generation** - Export invoices and quotations as PDF documents
-- **Dashboard** - Overview of business metrics and recent activities
-- **Company Settings** - Customize company information, tax rates, and numbering formats
-- **Bank Account Management** - Store and manage multiple bank accounts
-- **Responsive Design** - Mobile-friendly interface
-
----
-
-## 🛠 Tech Stack
+## 🛠️ Technology Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 19.2.0 | UI Framework |
-| Vite | 7.2.4 | Build Tool |
-| TailwindCSS | 4.1.18 | Styling |
-| React Router | 7.11.0 | Routing |
-| Lucide React | 0.562.0 | Icons |
+| Teknologi | Versi | Deskripsi |
+|-----------|-------|-----------|
+| React | 19.2 | Library UI |
+| Vite | 7.2 | Build tool & dev server |
+| Tailwind CSS | 4.1 | Utility-first CSS framework |
+| React Router | 7.11 | Client-side routing |
+| Lucide React | 0.562 | Icon library |
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Express.js | 4.18.2 | API Framework |
-| Prisma | 6.0.0 | ORM |
-| PostgreSQL | 15+ | Database |
-| JWT | 9.0.2 | Authentication |
-| PDFKit | 0.15.0 | PDF Generation |
-| bcryptjs | 2.4.3 | Password Hashing |
+| Teknologi | Versi | Deskripsi |
+|-----------|-------|-----------|
+| Node.js | 18+ | Runtime environment |
+| Express | 4.18 | Web framework |
+| Prisma | 6.0 | ORM & database toolkit |
+| PostgreSQL | 15 | Database |
+| JWT | 9.0 | Authentication tokens |
+| PDFKit | 0.15 | PDF generation |
+| bcryptjs | 2.4 | Password hashing |
 
----
+## 📊 Database Schema
 
-## 📦 Prerequisites
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│    User     │     │   Client    │     │ CompanySettings │
+├─────────────┤     ├─────────────┤     ├─────────────┤
+│ id (PK)     │     │ id (PK)     │     │ id (PK)     │
+│ email       │     │ name        │     │ companyName │
+│ password    │     │ contactName │     │ logo        │
+│ name        │     │ email       │     │ bankAccounts│
+│ role        │     │ phone       │     │ taxSettings │
+└──────┬──────┘     │ address     │     └─────────────┘
+       │            └──────┬──────┘
+       │                   │
+       ▼                   ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Invoice   │     │  Quotation  │     │     SPH     │
+├─────────────┤     ├─────────────┤     ├─────────────┤
+│ id (PK)     │     │ id (PK)     │     │ id (PK)     │
+│ invoiceNumber│    │ quotationNumber│  │ sphNumber   │
+│ clientId (FK)│    │ clientId (FK)│   │ clientId (FK)│
+│ userId (FK) │     │ userId (FK) │     │ userId (FK) │
+│ subtotal    │     │ subtotal    │     │ subtotal    │
+│ taxAmount   │     │ taxAmount   │     │ taxAmount   │
+│ total       │     │ total       │     │ total       │
+│ status      │     │ status      │     │ status      │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│ InvoiceItem │     │QuotationItem│     │   SPHItem   │
+├─────────────┤     ├─────────────┤     ├─────────────┤
+│ id (PK)     │     │ id (PK)     │     │ id (PK)     │
+│ invoiceId(FK)│    │quotationId(FK)│   │ sphId (FK)  │
+│ groupName   │     │ groupName   │     │ model       │
+│ model       │     │ model       │     │ description │
+│ description │     │ description │     │ quantity    │
+│ quantity    │     │ quantity    │     │ rate        │
+│ rate/amount │     │ rate/amount │     │ amount      │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
 
-Before running this project, make sure you have the following installed:
+## 🚀 Cara Menjalankan
 
-- **Node.js** (v18.0.0 or higher) - [Download](https://nodejs.org/)
-- **npm** (v9.0.0 or higher) - Comes with Node.js
-- **Docker** & **Docker Compose** - [Download](https://www.docker.com/products/docker-desktop/)
-- **Git** - [Download](https://git-scm.com/)
+### Prasyarat
+- **Node.js** v18 atau lebih baru
+- **Docker** (untuk database PostgreSQL)
+- **npm** atau **yarn**
 
----
-
-## 🚀 Getting Started
-
-### 1. Clone the Repository
+### 1. Clone & Setup
 
 ```bash
+# Clone repository
 git clone <repository-url>
 cd Webstie-Invoice
 ```
 
-### 2. Set Up the Database
-
-Start the PostgreSQL database using Docker Compose:
+### 2. Jalankan Database (PostgreSQL via Docker)
 
 ```bash
-# Start PostgreSQL container in the background
+# Jalankan PostgreSQL container
 docker-compose up -d
 
-# Verify the container is running
+# Verifikasi container berjalan
 docker ps
 ```
 
-The database will be available at:
-- **Host**: `localhost`
-- **Port**: `5432`
-- **Database**: `invoiceflow`
-- **Username**: `postgres`
-- **Password**: `password`
+Ini akan menjalankan PostgreSQL di `localhost:5432` dengan:
+- **User**: postgres
+- **Password**: password
+- **Database**: invoiceflow
 
-### 3. Configure the Server
+### 3. Setup Backend Server
 
 ```bash
-# Navigate to server directory
+# Masuk ke folder server
 cd server
 
 # Install dependencies
 npm install
 
-# Create environment file from example
+# Salin file environment
 cp .env.example .env
+
+# Sesuaikan .env jika diperlukan (default sudah sesuai untuk development)
+
+# Generate Prisma client
+npm run db:generate
+
+# Push schema ke database
+npm run db:push
+
+# Jalankan server development
+npm run dev
 ```
 
-Edit the `.env` file if needed (default values should work for local development):
+Server akan berjalan di `http://localhost:3001`
+
+### 4. Setup Frontend Client
+
+```bash
+# Buka terminal baru, masuk ke folder client
+cd client
+
+# Install dependencies
+npm install
+
+# Jalankan development server
+npm run dev
+```
+
+Frontend akan berjalan di `http://localhost:5173`
+
+### 5. Akses Aplikasi
+
+Buka browser dan akses `http://localhost:5173`
+
+## 📝 Environment Variables
+
+### Server (.env)
 
 ```env
 # Database
 DATABASE_URL="postgresql://postgres:password@localhost:5432/invoiceflow?schema=public"
 
-# JWT
+# JWT Authentication
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 JWT_EXPIRES_IN="7d"
 
@@ -132,311 +209,144 @@ JWT_EXPIRES_IN="7d"
 PORT=3001
 NODE_ENV=development
 
-# Client URL (for CORS)
+# Client URL (untuk CORS)
 CLIENT_URL="http://localhost:5173"
 ```
-
-Set up the database schema:
-
-```bash
-# Generate Prisma Client
-npm run db:generate
-
-# Push schema to database
-npm run db:push
-```
-
-### 4. Configure the Client
-
-```bash
-# Navigate to client directory (from project root)
-cd client
-
-# Install dependencies
-npm install
-```
-
-### 5. Run the Application
-
-You'll need two terminal windows to run both the server and client:
-
-**Terminal 1 - Start the Server:**
-```bash
-cd server
-npm run dev
-```
-Server will be running at: `http://localhost:3001`
-
-**Terminal 2 - Start the Client:**
-```bash
-cd client
-npm run dev
-```
-Client will be running at: `http://localhost:5173`
-
-### 🎉 Access the Application
-
-Open your browser and navigate to:
-- **Application**: [http://localhost:5173](http://localhost:5173)
-- **API Health Check**: [http://localhost:3001/api/health](http://localhost:3001/api/health)
-
----
-
-## 📁 Project Structure
-
-```
-Webstie-Invoice/
-├── client/                     # Frontend React application
-│   ├── public/                 # Static assets
-│   ├── src/
-│   │   ├── assets/            # Images and media
-│   │   ├── components/        # Reusable React components
-│   │   │   ├── Header.jsx     # App header
-│   │   │   ├── Layout.jsx     # Main layout wrapper
-│   │   │   ├── Sidebar.jsx    # Navigation sidebar
-│   │   │   └── ui/            # UI components
-│   │   ├── pages/             # Page components
-│   │   │   ├── Clients.jsx    # Client management
-│   │   │   ├── Dashboard.jsx  # Main dashboard
-│   │   │   ├── Documents.jsx  # Invoice/Quotation list
-│   │   │   ├── InvoiceForm.jsx # Create/Edit forms
-│   │   │   ├── Login.jsx      # Login page
-│   │   │   ├── Register.jsx   # Registration page
-│   │   │   └── Settings.jsx   # App settings
-│   │   ├── App.jsx            # Main App component
-│   │   └── main.jsx           # Entry point
-│   ├── package.json
-│   └── vite.config.js
-│
-├── server/                     # Backend Express application
-│   ├── prisma/
-│   │   └── schema.prisma      # Database schema
-│   ├── src/
-│   │   ├── routes/            # API routes
-│   │   │   ├── auth.js        # Authentication routes
-│   │   │   ├── clients.js     # Client CRUD routes
-│   │   │   ├── invoices.js    # Invoice routes
-│   │   │   ├── quotations.js  # Quotation routes
-│   │   │   └── settings.js    # Settings routes
-│   │   └── index.js           # Server entry point
-│   ├── .env.example           # Environment template
-│   └── package.json
-│
-├── docker-compose.yml          # Docker configuration
-└── README.md                   # This file
-```
-
----
 
 ## 🔌 API Endpoints
 
 ### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | User login |
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| POST | `/api/auth/register` | Registrasi user baru |
+| POST | `/api/auth/login` | Login user |
 | GET | `/api/auth/me` | Get current user |
 
 ### Clients
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/clients` | List all clients |
-| POST | `/api/clients` | Create new client |
-| GET | `/api/clients/:id` | Get client by ID |
-| PUT | `/api/clients/:id` | Update client |
-| DELETE | `/api/clients/:id` | Delete client |
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/clients` | Daftar semua klien |
+| GET | `/api/clients/:id` | Detail klien |
+| POST | `/api/clients` | Buat klien baru |
+| PUT | `/api/clients/:id` | Update klien |
+| DELETE | `/api/clients/:id` | Hapus klien |
 
-### Invoices
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/invoices` | List all invoices |
-| POST | `/api/invoices` | Create new invoice |
-| GET | `/api/invoices/:id` | Get invoice by ID |
-| PUT | `/api/invoices/:id` | Update invoice |
-| DELETE | `/api/invoices/:id` | Delete invoice |
-| GET | `/api/invoices/:id/pdf` | Download invoice PDF |
+### Invoices (Faktur)
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/invoices` | Daftar semua faktur |
+| GET | `/api/invoices/:id` | Detail faktur |
+| POST | `/api/invoices` | Buat faktur baru |
+| PUT | `/api/invoices/:id` | Update faktur |
+| DELETE | `/api/invoices/:id` | Hapus faktur |
+| GET | `/api/invoices/:id/pdf` | Download PDF faktur |
 
-### Quotations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/quotations` | List all quotations |
-| POST | `/api/quotations` | Create new quotation |
-| GET | `/api/quotations/:id` | Get quotation by ID |
-| PUT | `/api/quotations/:id` | Update quotation |
-| DELETE | `/api/quotations/:id` | Delete quotation |
+### Quotations (Penawaran)
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/quotations` | Daftar semua penawaran |
+| GET | `/api/quotations/:id` | Detail penawaran |
+| POST | `/api/quotations` | Buat penawaran baru |
+| PUT | `/api/quotations/:id` | Update penawaran |
+| DELETE | `/api/quotations/:id` | Hapus penawaran |
+| GET | `/api/quotations/:id/pdf` | Download PDF penawaran |
 
 ### Settings
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
 | GET | `/api/settings` | Get company settings |
 | PUT | `/api/settings` | Update company settings |
-| GET | `/api/settings/bank-accounts` | List bank accounts |
-| POST | `/api/settings/bank-accounts` | Add bank account |
+| GET | `/api/settings/bank-accounts` | Daftar rekening bank |
+| POST | `/api/settings/bank-accounts` | Tambah rekening bank |
+| DELETE | `/api/settings/bank-accounts/:id` | Hapus rekening bank |
 
----
+## ✨ Fitur Utama
 
-## 🗄 Database Schema
+### 📊 Dashboard
+- Ringkasan KPI (draft, tagihan belum dibayar, menunggu respon)
+- Status breakdown penawaran & faktur
+- Daftar dokumen terbaru
 
-The application uses the following main entities:
+### 📄 Manajemen Dokumen
+- **Penawaran (Quotation)**: Buat, edit, kirim, terima/tolak
+- **Faktur (Invoice)**: Buat dari penawaran atau standalone
+- **PDF Generation**: Download PDF dengan format profesional
 
-- **User** - Authentication and user management
-- **Client** - Customer/client information
-- **Invoice** - Invoice documents with line items
-- **InvoiceItem** - Individual line items for invoices
-- **Quotation** - Quotation documents with line items
-- **QuotationItem** - Individual line items for quotations
-- **SPH** - Surat Penawaran Harga (Price Offering Letter)
-- **SPHItem** - Line items for SPH documents
-- **CompanySettings** - Company configuration and numbering
-- **BankAccount** - Bank account details
-- **PaymentRecord** - Payment tracking for invoices
+### 👥 Manajemen Klien
+- CRUD klien dengan detail lengkap
+- Filter dan pencarian
+- Histori dokumen per klien
 
----
+### ⚙️ Pengaturan
+- **Profil Perusahaan**: Logo, nama, alamat, kontak
+- **Detail Bank**: Multiple rekening bank
+- **Pajak & Aturan**: PPN default, format penomoran
+- **Tanda Tangan**: Upload gambar tanda tangan digital
 
-## ⚙️ Environment Variables
+### 🔐 Autentikasi
+- Login/Register dengan JWT
+- Protected routes
+- Session management
 
-### Server (`server/.env`)
+## 📱 Responsivitas
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:password@localhost:5432/invoiceflow?schema=public` |
-| `JWT_SECRET` | Secret key for JWT tokens | - |
-| `JWT_EXPIRES_IN` | Token expiration time | `7d` |
-| `PORT` | Server port | `3001` |
-| `NODE_ENV` | Environment mode | `development` |
-| `CLIENT_URL` | Frontend URL for CORS | `http://localhost:5173` |
+Aplikasi ini fully responsive dengan:
+- Mobile-first design
+- Slide-out sidebar untuk mobile
+- Tabel responsif dengan horizontal scroll
+- Form yang adaptif
 
----
+## 🌙 Dark Mode
 
-## 📜 Available Scripts
+Tema gelap sudah terimplementasi secara default dengan:
+- Warna yang sesuai untuk mata
+- Konsistensi visual di seluruh aplikasi
 
-### Server Scripts
+## 🔧 Development Scripts
 
+### Server
 ```bash
-# Development mode with hot reload
-npm run dev
-
-# Production mode
-npm run start
-
-# Generate Prisma Client
-npm run db:generate
-
-# Push schema changes to database
-npm run db:push
-
-# Run database migrations
-npm run db:migrate
-
-# Open Prisma Studio (database GUI)
-npm run db:studio
+npm run dev          # Jalankan dev server dengan nodemon
+npm run start        # Jalankan production server
+npm run db:generate  # Generate Prisma client
+npm run db:push      # Push schema ke database
+npm run db:migrate   # Run migrations
+npm run db:studio    # Buka Prisma Studio
 ```
 
-### Client Scripts
-
+### Client
 ```bash
-# Development server with HMR
-npm run dev
+npm run dev      # Jalankan Vite dev server
+npm run build    # Build untuk production
+npm run preview  # Preview production build
+npm run lint     # Jalankan ESLint
+```
 
-# Build for production
+## 📦 Build untuk Production
+
+### Frontend
+```bash
+cd client
 npm run build
-
-# Preview production build
-npm run preview
-
-# Run ESLint
-npm run lint
+# Output di folder `dist/`
 ```
 
-### Docker Commands
-
-```bash
-# Start database container
-docker-compose up -d
-
-# Stop database container
-docker-compose down
-
-# View container logs
-docker logs invoiceflow-db
-
-# Access PostgreSQL CLI
-docker exec -it invoiceflow-db psql -U postgres -d invoiceflow
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Database Connection Issues
-
-**Error**: `Can't reach database server`
-
-1. Ensure Docker is running:
-   ```bash
-   docker ps
-   ```
-2. If the container is not running:
-   ```bash
-   docker-compose up -d
-   ```
-3. Wait a few seconds for PostgreSQL to initialize
-
-### Port Already in Use
-
-**Error**: `Port 3001 is already in use`
-
-```bash
-# Find and kill the process (Windows)
-netstat -ano | findstr :3001
-taskkill /PID <PID> /F
-
-# Or change the port in server/.env
-PORT=3002
-```
-
-### Prisma Schema Out of Sync
-
-If you see schema-related errors:
-
+### Backend
 ```bash
 cd server
-npm run db:push
-npm run db:generate
+npm run start
+# Pastikan NODE_ENV=production di .env
 ```
 
-### Client Cannot Connect to Server
+## 🐳 Docker (Optional Full Stack)
 
-1. Ensure the server is running on port 3001
-2. Check CORS settings in `server/src/index.js`
-3. Verify `CLIENT_URL` in `.env` matches your frontend URL
+Untuk menjalankan seluruh stack dengan Docker:
 
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -m 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Open a Pull Request
+```bash
+# Jalankan semua services
+docker-compose up -d
+```
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-## 🙏 Acknowledgments
-
-- [React](https://react.dev/)
-- [Vite](https://vitejs.dev/)
-- [TailwindCSS](https://tailwindcss.com/)
-- [Prisma](https://www.prisma.io/)
-- [Express.js](https://expressjs.com/)
-
----
-
-**Made with ❤️ for efficient invoice management**
+**InvoiceFlow** - Dibuat dengan ❤️ untuk bisnis Indonesia

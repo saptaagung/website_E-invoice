@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     FileText,
@@ -8,15 +9,41 @@ import {
     LogOut,
     X
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/quotations', icon: FileQuestion, label: 'Quotations' },
-    { to: '/invoices', icon: FileText, label: 'Invoices' },
-    { to: '/clients', icon: Users, label: 'Clients' },
+    { to: '/quotations', icon: FileQuestion, label: 'Penawaran' },
+    { to: '/invoices', icon: FileText, label: 'Faktur' },
+    { to: '/clients', icon: Users, label: 'Klien' },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    const handleLogoutClick = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const handleLogoutConfirm = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const handleLogoutCancel = () => {
+        setShowLogoutConfirm(false);
+    };
+
+    // Get user initials for avatar
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    };
+
+    const userInitials = getInitials(user?.name);
+
     return (
         <>
             {/* Mobile Overlay */}
@@ -25,6 +52,30 @@ export default function Sidebar({ isOpen, onClose }) {
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
                     onClick={onClose}
                 />
+            )}
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutConfirm && (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-xl p-6 max-w-sm w-full">
+                        <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">Konfirmasi Keluar</h3>
+                        <p className="text-sm text-text-secondary mb-6">Apakah Anda yakin ingin keluar dari akun Anda?</p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={handleLogoutCancel}
+                                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-main dark:hover:text-white rounded-lg hover:bg-background-light dark:hover:bg-gray-800 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={handleLogoutConfirm}
+                                className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                            >
+                                Ya, Keluar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Sidebar - Desktop always visible, Mobile slide-out */}
@@ -88,27 +139,33 @@ export default function Sidebar({ isOpen, onClose }) {
                         }
                     >
                         <Settings size={20} />
-                        <span className="text-sm font-medium">Settings</span>
+                        <span className="text-sm font-medium">Pengaturan</span>
                     </NavLink>
                 </nav>
 
-                {/* User Profile */}
+                {/* User Profile - Clickable for logout */}
                 <div className="p-4 border-t border-border-light dark:border-border-dark">
-                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-background-light dark:hover:bg-gray-800 cursor-pointer">
+                    <button
+                        onClick={handleLogoutClick}
+                        className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group"
+                    >
                         <div
-                            className="size-8 rounded-full bg-cover bg-center bg-primary/20"
-                            style={{ backgroundImage: "url('https://api.dicebear.com/7.x/initials/svg?seed=JD')" }}
-                        ></div>
-                        <div className="flex flex-col flex-1">
-                            <p className="text-sm font-medium text-text-main dark:text-white">Jane Doe</p>
-                            <p className="text-xs text-text-secondary dark:text-gray-400">Admin</p>
+                            className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm"
+                        >
+                            {userInitials}
                         </div>
-                        <button className="text-text-secondary hover:text-red-500 transition-colors">
+                        <div className="flex flex-col flex-1 text-left">
+                            <p className="text-sm font-medium text-text-main dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{user?.name || 'Pengguna'}</p>
+                            <p className="text-xs text-text-secondary dark:text-gray-400">{user?.email || ''}</p>
+                        </div>
+                        <div className="text-text-secondary group-hover:text-red-500 transition-colors">
                             <LogOut size={18} />
-                        </button>
-                    </div>
+                        </div>
+                    </button>
                 </div>
             </aside>
         </>
     );
 }
+
+

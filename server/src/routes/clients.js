@@ -7,12 +7,13 @@ const router = express.Router();
 // Apply auth to all routes
 router.use(authenticateToken);
 
-// Get all clients
+// Get all clients for current user
 router.get('/', async (req, res) => {
     try {
         const { search, status } = req.query;
+        const userId = req.user.id;
 
-        const where = {};
+        const where = { userId }; // Filter by current user
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -41,11 +42,16 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get single client
+// Get single client (only if owned by current user)
 router.get('/:id', async (req, res) => {
     try {
-        const client = await prisma.client.findUnique({
-            where: { id: req.params.id },
+        const userId = req.user.id;
+
+        const client = await prisma.client.findFirst({
+            where: {
+                id: req.params.id,
+                userId: userId // Ensure user owns this client
+            },
             include: {
                 invoices: {
                     orderBy: { createdAt: 'desc' },
@@ -69,10 +75,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create client
+// Create client for current user
 router.post('/', async (req, res) => {
     try {
         const { name, contactName, email, phone, address, city, postalCode, country, taxId, notes } = req.body;
+        const userId = req.user.id;
 
         if (!name) {
             return res.status(400).json({ error: 'Client name is required' });
@@ -80,6 +87,7 @@ router.post('/', async (req, res) => {
 
         const client = await prisma.client.create({
             data: {
+                userId, // Associate with current user
                 name,
                 contactName,
                 email,
@@ -100,9 +108,20 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update client
+// Update client (only if owned by current user)
 router.put('/:id', async (req, res) => {
     try {
+        const userId = req.user.id;
+
+        // First check ownership
+        const existing = await prisma.client.findFirst({
+            where: { id: req.params.id, userId }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Client not found' });
+        }
+
         const client = await prisma.client.update({
             where: { id: req.params.id },
             data: req.body,
@@ -115,9 +134,20 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Delete client
+// Delete client (only if owned by current user)
 router.delete('/:id', async (req, res) => {
     try {
+        const userId = req.user.id;
+
+        // First check ownership
+        const existing = await prisma.client.findFirst({
+            where: { id: req.params.id, userId }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Client not found' });
+        }
+
         await prisma.client.delete({
             where: { id: req.params.id }
         });

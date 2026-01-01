@@ -6,17 +6,21 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-// Get company settings
+// Get company settings for current user
 router.get('/', async (req, res) => {
     try {
-        let settings = await prisma.companySettings.findFirst({
+        const userId = req.user.id;
+
+        let settings = await prisma.companySettings.findUnique({
+            where: { userId },
             include: { bankAccounts: true }
         });
 
-        // Create default settings if none exist
+        // Create default settings if none exist for this user
         if (!settings) {
             settings = await prisma.companySettings.create({
                 data: {
+                    userId,
                     companyName: 'My Company',
                     defaultTaxName: 'PPN',
                     defaultTaxRate: 11,
@@ -30,8 +34,8 @@ router.get('/', async (req, res) => {
             settings.bankAccounts = settings.bankAccounts.map(acc => ({
                 id: acc.id,
                 bankName: acc.bankName,
-                accountNumber: acc.accountNum, // Map DB field
-                accountHolder: acc.holderName, // Map DB field
+                accountNumber: acc.accountNum,
+                accountHolder: acc.holderName,
                 isDefault: acc.isDefault
             }));
         }
@@ -43,10 +47,14 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Update company settings
+// Update company settings for current user
 router.put('/', async (req, res) => {
     try {
-        let settings = await prisma.companySettings.findFirst();
+        const userId = req.user.id;
+
+        let settings = await prisma.companySettings.findUnique({
+            where: { userId }
+        });
 
         // Map frontend field names to database field names
         const updateData = {};
@@ -61,7 +69,6 @@ router.put('/', async (req, res) => {
         if (req.body.city !== undefined) updateData.city = req.body.city;
         if (req.body.workshop !== undefined) updateData.workshop = req.body.workshop;
         if (req.body.logo !== undefined) updateData.logo = req.body.logo;
-        // documentIntroText and defaultTerms removed as per user request (managed on document level only)
         if (req.body.signatureImage !== undefined) updateData.signatureImage = req.body.signatureImage;
         if (req.body.signatureName !== undefined) updateData.signatureName = req.body.signatureName;
 
@@ -83,20 +90,22 @@ router.put('/', async (req, res) => {
 
         if (settings) {
             settings = await prisma.companySettings.update({
-                where: { id: settings.id },
+                where: { userId },
                 data: updateData,
             });
         } else {
             settings = await prisma.companySettings.create({
                 data: {
+                    userId,
                     companyName: updateData.companyName || 'My Company',
                     ...updateData
                 },
             });
         }
 
-        // Fetch bank accounts separately
+        // Fetch bank accounts for this user's settings
         const rawBankAccounts = await prisma.bankAccount.findMany({
+            where: { settingsId: settings.id },
             orderBy: { isDefault: 'desc' }
         });
 
@@ -117,10 +126,22 @@ router.put('/', async (req, res) => {
     }
 });
 
-// Get bank accounts
+// Get bank accounts for current user
 router.get('/bank-accounts', async (req, res) => {
     try {
+        const userId = req.user.id;
+
+        // First get user's settings
+        const settings = await prisma.companySettings.findUnique({
+            where: { userId }
+        });
+
+        if (!settings) {
+            return res.json([]);
+        }
+
         const rawAccounts = await prisma.bankAccount.findMany({
+            where: { settingsId: settings.id },
             orderBy: { isDefault: 'desc' }
         });
 
@@ -139,9 +160,11 @@ router.get('/bank-accounts', async (req, res) => {
     }
 });
 
-// Add bank account
+// Add bank account for current user
 router.post('/bank-accounts', async (req, res) => {
     try {
+        const userId = req.user.id;
+
         // Support both frontend naming and original naming
         const bankName = req.body.bankName;
         const accountNumber = req.body.accountNumber || req.body.accountNum;
@@ -152,12 +175,26 @@ router.post('/bank-accounts', async (req, res) => {
             return res.status(400).json({ error: 'Bank name and account number are required' });
         }
 
-        // Get settings to link bank account
-        const settings = await prisma.companySettings.findFirst();
+        // Get or create user's settings
+        let settings = await prisma.companySettings.findUnique({
+            where: { userId }
+        });
 
-        // If this is default, unset other defaults
+        if (!settings) {
+            settings = await prisma.companySettings.create({
+                data: {
+                    userId,
+                    companyName: 'My Company',
+                    defaultTaxName: 'PPN',
+                    defaultTaxRate: 11,
+                }
+            });
+        }
+
+        // If this is default, unset other defaults for this user
         if (isDefault) {
             await prisma.bankAccount.updateMany({
+                where: { settingsId: settings.id },
                 data: { isDefault: false }
             });
         }
@@ -168,7 +205,7 @@ router.post('/bank-accounts', async (req, res) => {
                 accountNum: accountNumber,
                 holderName: accountHolder || '',
                 isDefault,
-                settingsId: settings?.id || null
+                settingsId: settings.id
             }
         });
 
@@ -187,12 +224,32 @@ router.post('/bank-accounts', async (req, res) => {
     }
 });
 
-// Delete bank account
+// Delete bank account (only if owned by current user)
 router.delete('/bank-accounts/:id', async (req, res) => {
     try {
+        const userId = req.user.id;
+
+        // Verify ownership
+        const settings = await prisma.companySettings.findUnique({
+            where: { userId }
+        });
+
+        if (!settings) {
+            return res.status(404).json({ error: 'Bank account not found' });
+        }
+
+        const account = await prisma.bankAccount.findFirst({
+            where: { id: req.params.id, settingsId: settings.id }
+        });
+
+        if (!account) {
+            return res.status(404).json({ error: 'Bank account not found' });
+        }
+
         await prisma.bankAccount.delete({
             where: { id: req.params.id }
         });
+
         res.json({ message: 'Bank account deleted successfully' });
     } catch (error) {
         console.error('Delete bank account error:', error);
@@ -200,7 +257,7 @@ router.delete('/bank-accounts/:id', async (req, res) => {
     }
 });
 
-// Dashboard stats
+// Dashboard stats for current user
 router.get('/dashboard', async (req, res) => {
     try {
         const userId = req.user.id;

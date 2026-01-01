@@ -24,7 +24,7 @@ export default function Login() {
             await login(formData.email, formData.password);
             navigate('/');
         } catch (err) {
-            setError(err.message || 'Failed to login. Please check your credentials.');
+            setError(err.message || 'Gagal masuk. Silakan periksa kredensial Anda.');
         } finally {
             setIsLoading(false);
         }
@@ -46,8 +46,8 @@ export default function Login() {
                             <FileText size={28} />
                         </div>
                     </div>
-                    <h1 className="text-2xl font-bold text-text-main dark:text-white">Welcome to InvoiceFlow</h1>
-                    <p className="text-text-secondary mt-2">Sign in to manage your invoices</p>
+                    <h1 className="text-2xl font-bold text-text-main dark:text-white">Selamat Datang di InvoiceFlow</h1>
+                    <p className="text-text-secondary mt-2">Masuk untuk mengelola faktur Anda</p>
                 </div>
 
                 {/* Login Card */}
@@ -62,7 +62,7 @@ export default function Login() {
                         {/* Email */}
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Email Address
+                                Alamat Email
                             </label>
                             <input
                                 type="email"
@@ -78,10 +78,10 @@ export default function Login() {
                         <div>
                             <div className="flex items-center justify-between mb-2">
                                 <label className="block text-sm font-medium text-text-main dark:text-gray-300">
-                                    Password
+                                    Kata Sandi
                                 </label>
                                 <a href="#" className="text-sm text-primary hover:text-primary-dark font-medium">
-                                    Forgot password?
+                                    Lupa kata sandi?
                                 </a>
                             </div>
                             <div className="relative">
@@ -113,7 +113,7 @@ export default function Login() {
                                 className="size-4 rounded border-border-light text-primary focus:ring-primary"
                             />
                             <label htmlFor="remember" className="ml-2 text-sm text-text-secondary">
-                                Remember me for 30 days
+                                Ingat saya selama 30 hari
                             </label>
                         </div>
 
@@ -126,10 +126,10 @@ export default function Login() {
                             {isLoading ? (
                                 <>
                                     <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Signing in...
+                                    Sedang masuk...
                                 </>
                             ) : (
-                                'Sign In'
+                                'Masuk'
                             )}
                         </button>
                     </form>
@@ -141,7 +141,7 @@ export default function Login() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-4 bg-surface-light dark:bg-surface-dark text-text-secondary">
-                                or continue with
+                                atau lanjutkan dengan
                             </span>
                         </div>
                     </div>
@@ -168,9 +168,9 @@ export default function Login() {
 
                 {/* Sign Up Link */}
                 <p className="text-center mt-6 text-text-secondary">
-                    Don't have an account?{' '}
+                    Belum punya akun?{' '}
                     <Link to="/register" className="text-primary hover:text-primary-dark font-semibold">
-                        Create account
+                        Buat akun
                     </Link>
                 </p>
 

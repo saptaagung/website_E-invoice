@@ -48,8 +48,8 @@ const BG_LIGHT = '#eff6ff'; // Blue-50
 
 function drawHeaderBox(doc, x, y, label, value) {
     doc.font('Helvetica-Bold').fontSize(8).fillColor(TEXT_COLOR);
-    doc.text(label, x + 5, y + 6, { width: 50 });
-    doc.font('Helvetica').text(value, x + 60, y + 6);
+    doc.text(label, x + 5, y + 6, { width: 55 });
+    doc.font('Helvetica').text(value, x + 65, y + 6, { width: 110 });
 }
 
 /**
@@ -228,13 +228,15 @@ export function generateInvoicePDF(invoice, companySettings) {
             };
 
             drawTotalRow('TOTAL', formatCurrency(Number(invoice.subtotal)));
-            if (Number(invoice.discount) > 0) {
+            const discountAmount = Number(invoice.discount) || 0;
+            if (discountAmount > 0) {
                 let percent = 0;
-                if (invoice.subtotal > 0) {
-                    percent = (Number(invoice.discount) / Number(invoice.subtotal)) * 100;
+                const subtotal = Number(invoice.subtotal) || 0;
+                if (subtotal > 0) {
+                    percent = (discountAmount / subtotal) * 100;
                     percent = Math.round(percent * 100) / 100;
                 }
-                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(Number(invoice.discount))}`, false, false);
+                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(discountAmount)}`, false, false);
             }
             if (Number(invoice.taxAmount) > 0) {
                 drawTotalRow(`PPN ${invoice.taxRate}%`, formatCurrency(Number(invoice.taxAmount)));
@@ -484,14 +486,16 @@ export function generateQuotationPDF(quotation, companySettings) {
             };
 
             drawTotalRow('TOTAL', formatCurrency(Number(quotation.subtotal)));
-            if (Number(quotation.discount) > 0) {
+            const discountAmount = Number(quotation.discount) || 0;
+            if (discountAmount > 0) {
                 // Calculate percent if not present (DB only stores amount)
                 let percent = quotation.discountPercent;
-                if (!percent && Number(quotation.subtotal) > 0) {
-                    percent = (Number(quotation.discount) / Number(quotation.subtotal)) * 100;
+                const subtotal = Number(quotation.subtotal) || 0;
+                if (!percent && subtotal > 0) {
+                    percent = (discountAmount / subtotal) * 100;
                     percent = Math.round(percent * 100) / 100; // Round to 2 decimals
                 }
-                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(Number(quotation.discount))}`, false, false);
+                drawTotalRow(`Discount ${percent}%`, `-${formatCurrency(discountAmount)}`, false, false);
             }
             if (Number(quotation.taxAmount) > 0) {
                 drawTotalRow(`PPN ${quotation.taxRate}%`, formatCurrency(Number(quotation.taxAmount)));

@@ -22,7 +22,7 @@ export default function Register() {
         setError('');
 
         if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
+            setError('Kata sandi tidak cocok');
             return;
         }
         setIsLoading(true);
@@ -31,7 +31,7 @@ export default function Register() {
             await register(formData.name, formData.email, formData.password);
             navigate('/');
         } catch (err) {
-            setError(err.message || 'Failed to create account. Please try again.');
+            setError(err.message || 'Gagal membuat akun. Silakan coba lagi.');
         } finally {
             setIsLoading(false);
         }
@@ -53,8 +53,8 @@ export default function Register() {
                             <FileText size={28} />
                         </div>
                     </div>
-                    <h1 className="text-2xl font-bold text-text-main dark:text-white">Create your account</h1>
-                    <p className="text-text-secondary mt-2">Start managing your invoices today</p>
+                    <h1 className="text-2xl font-bold text-text-main dark:text-white">Buat akun Anda</h1>
+                    <p className="text-text-secondary mt-2">Kelola faktur Anda mulai hari ini</p>
                 </div>
 
                 {/* Register Card */}
@@ -69,7 +69,7 @@ export default function Register() {
                         {/* Name */}
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Full Name
+                                Nama Lengkap
                             </label>
                             <input
                                 type="text"
@@ -84,7 +84,7 @@ export default function Register() {
                         {/* Email */}
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Email Address
+                                Alamat Email
                             </label>
                             <input
                                 type="email"
@@ -99,7 +99,7 @@ export default function Register() {
                         {/* Password */}
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Password
+                                Kata Sandi
                             </label>
                             <div className="relative">
                                 <input
@@ -124,7 +124,7 @@ export default function Register() {
                         {/* Confirm Password */}
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Confirm Password
+                                Konfirmasi Kata Sandi
                             </label>
                             <input
                                 type="password"
@@ -147,10 +147,10 @@ export default function Register() {
                                 className="size-4 rounded border-border-light text-primary focus:ring-primary mt-0.5"
                             />
                             <label htmlFor="terms" className="ml-2 text-sm text-text-secondary">
-                                I agree to the{' '}
-                                <a href="#" className="text-primary hover:underline">Terms of Service</a>
-                                {' '}and{' '}
-                                <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+                                Saya menyetujui{' '}
+                                <a href="#" className="text-primary hover:underline">Ketentuan Layanan</a>
+                                {' '}dan{' '}
+                                <a href="#" className="text-primary hover:underline">Kebijakan Privasi</a>
                             </label>
                         </div>
 
@@ -163,10 +163,10 @@ export default function Register() {
                             {isLoading ? (
                                 <>
                                     <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Creating account...
+                                    Membuat akun...
                                 </>
                             ) : (
-                                'Create Account'
+                                'Buat Akun'
                             )}
                         </button>
                     </form>
@@ -174,9 +174,9 @@ export default function Register() {
 
                 {/* Sign In Link */}
                 <p className="text-center mt-6 text-text-secondary">
-                    Already have an account?{' '}
+                    Sudah punya akun?{' '}
                     <Link to="/login" className="text-primary hover:text-primary-dark font-semibold">
-                        Sign in
+                        Masuk
                     </Link>
                 </p>
             </div>

@@ -20,7 +20,7 @@ export default function Header({ onMenuClick }) {
                     <Search size={20} className="text-text-secondary dark:text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search documents, clients..."
+                        placeholder="Cari dokumen, klien..."
                         className="bg-transparent border-none text-sm w-full ml-2 text-text-main dark:text-white placeholder:text-text-secondary dark:placeholder:text-gray-500 focus:ring-0 focus:outline-none"
                     />
                 </label>

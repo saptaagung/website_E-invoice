@@ -46,7 +46,7 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                         <div>
                             <h2 className="text-lg font-bold text-text-main dark:text-white leading-tight">{client.name}</h2>
                             <span className="text-xs text-text-secondary dark:text-gray-400">
-                                Added on {new Date(client.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                Ditambahkan pada {new Date(client.createdAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                         </div>
                     </div>
@@ -67,7 +67,7 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
                     {/* Contact Info */}
                     <section>
-                        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Contact Information</h3>
+                        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Informasi Kontak</h3>
                         <div className="space-y-4">
                             <div className="flex items-start gap-3">
                                 <User size={20} className="mt-0.5 text-text-secondary" />
@@ -97,7 +97,7 @@ function ClientDrawer({ client, onClose, onUpdate }) {
 
                     {/* Address */}
                     <section>
-                        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Billing Address</h3>
+                        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Alamat Penagihan</h3>
                         <div className="flex items-start gap-3 p-4 rounded-xl bg-background-light dark:bg-gray-800/50 border border-border-light dark:border-border-dark">
                             <MapPin size={20} className="mt-0.5 text-text-secondary" />
                             <div>
@@ -130,8 +130,10 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                     {/* Notes */}
                     {client.notes && (
                         <section>
-                            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Notes</h3>
-                            <p className="text-sm text-text-secondary italic">{client.notes}</p>
+                            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Catatan</h3>
+                            <p className="text-sm text-text-main dark:text-gray-300">
+                                {client.notes || 'Tidak ada catatan.'}
+                            </p>
                         </section>
                     )}
                 </div>
@@ -139,7 +141,7 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                 {/* Drawer Footer */}
                 <div className="p-6 border-t border-border-light dark:border-border-dark bg-background-light dark:bg-gray-800/30">
                     <Button className="w-full justify-center" icon={Plus}>
-                        Create Document
+                        Buat Dokumen
                     </Button>
                     <div className="mt-3 flex justify-center">
                         <p className="text-xs text-text-secondary">Creates a new Quotation or Invoice for this client</p>
@@ -302,7 +304,7 @@ function ClientModal({ client, onClose, onSave }) {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1">
-                                Country
+                                Negara
                             </label>
                             <input
                                 type="text"
@@ -328,14 +330,14 @@ function ClientModal({ client, onClose, onSave }) {
 
                     <div>
                         <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1">
-                            Notes
+                            Catatan
                         </label>
                         <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             rows={2}
                             className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                            placeholder="Internal notes about this client..."
+                            placeholder="Catatan internal tentang klien ini..."
                         />
                     </div>
 
@@ -345,7 +347,7 @@ function ClientModal({ client, onClose, onSave }) {
                             onClick={onClose}
                             className="flex-1 py-2.5 px-4 border border-border-light dark:border-border-dark rounded-xl text-sm font-medium text-text-main dark:text-gray-300 hover:bg-background-light dark:hover:bg-gray-800 transition-colors"
                         >
-                            Cancel
+                            Batal
                         </button>
                         <button
                             type="submit"
@@ -360,7 +362,7 @@ function ClientModal({ client, onClose, onSave }) {
                             ) : (
                                 <>
                                     <Save size={16} />
-                                    {client ? 'Update Client' : 'Add Client'}
+                                    {client ? 'Perbarui Klien' : 'Tambah Klien'}
                                 </>
                             )}
                         </button>
@@ -378,6 +380,8 @@ export default function Clients() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const [pageSize, setPageSize] = useState(20);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Fetch clients from API
     useEffect(() => {
@@ -410,6 +414,12 @@ export default function Clients() {
 
     const filteredClients = clientsData;
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredClients.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedClients = filteredClients.slice(startIndex, endIndex);
+
     return (
         <div className="flex flex-col gap-6 pb-10">
             {/* Action Bar */}
@@ -420,7 +430,7 @@ export default function Clients() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Filter clients by name, email or company..."
+                        placeholder="Filter klien berdasarkan nama, email, atau perusahaan..."
                         className="block w-full pl-10 pr-3 py-2.5 border border-border-light dark:border-border-dark rounded-xl leading-5 bg-surface-light dark:bg-surface-dark placeholder-text-secondary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm shadow-sm transition-all"
                     />
                 </div>
@@ -430,7 +440,7 @@ export default function Clients() {
                         <span>Filter</span>
                     </button>
                     <Button icon={Plus} className="flex-1 sm:flex-none" onClick={handleAddClient}>
-                        Add New Client
+                        Klien Baru
                     </Button>
                 </div>
             </div>
@@ -441,11 +451,11 @@ export default function Clients() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-background-light/50 dark:bg-gray-800/50 border-b border-border-light dark:border-border-dark">
-                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[25%]">Client Name</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[20%]">Contact Person</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[25%]">Email Address</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[25%]">Nama Klien</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[20%]">Kontak Person</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[25%]">Alamat Email</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[15%]">Status</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[15%] text-right">Actions</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[15%] text-right">Tindakan</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
@@ -460,11 +470,11 @@ export default function Clients() {
                             ) : filteredClients.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center text-text-secondary">
-                                        No clients found. Click "Add New Client" to create one.
+                                        Tidak ada klien ditemukan. Klik "Klien Baru" untuk membuat satu.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredClients.map((client) => (
+                                paginatedClients.map((client) => (
                                     <tr
                                         key={client.id}
                                         onClick={() => setSelectedClient(client)}
@@ -489,7 +499,6 @@ export default function Clients() {
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                                                 }`}>
-                                                {client.status === 'active' ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -508,10 +517,45 @@ export default function Clients() {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-border-light dark:border-border-dark flex items-center justify-between">
-                    <p className="text-sm text-text-secondary">
-                        Showing <span className="font-medium text-text-main dark:text-white">{filteredClients.length}</span> clients
-                    </p>
+                <div className="px-6 py-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <p className="text-sm text-text-secondary">
+                            Menampilkan <span className="font-medium text-text-main dark:text-white">{startIndex + 1}</span> sampai{' '}
+                            <span className="font-medium text-text-main dark:text-white">{Math.min(endIndex, filteredClients.length)}</span> dari{' '}
+                            <span className="font-medium text-text-main dark:text-white">{filteredClients.length}</span> klien
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-text-secondary">Tampilkan:</span>
+                            <select
+                                value={pageSize}
+                                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                className="px-2 py-1 border border-border-light dark:border-border-dark rounded-lg text-sm bg-surface-light dark:bg-surface-dark text-text-main dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-text-secondary hover:bg-background-light dark:hover:bg-gray-800 hover:text-text-main dark:hover:text-white transition-colors disabled:opacity-50"
+                        >
+                            Sebelumnya
+                        </button>
+                        <span className="px-3 py-1.5 text-sm text-text-secondary">
+                            Halaman {currentPage} dari {totalPages || 1}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                            className="px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark text-sm font-medium text-text-secondary hover:bg-background-light dark:hover:bg-gray-800 hover:text-text-main dark:hover:text-white transition-colors disabled:opacity-50"
+                        >
+                            Berikutnya
+                        </button>
+                    </div>
                 </div>
             </div>
 

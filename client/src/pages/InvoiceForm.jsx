@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { Save, Send, Download, Plus, Trash2, X, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Send, Download, Plus, Trash2, X, Check, ChevronDown, ChevronRight, Edit } from 'lucide-react';
 import { Button } from '../components/ui';
 import { invoices, quotations, clients as clientsApi, settings as settingsApi } from '../lib/api';
 
@@ -54,6 +54,7 @@ export default function InvoiceForm() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isNew = location.pathname.includes('/new');
+    const isViewOnly = searchParams.get('view') === 'true';
 
     // Determine document type from URL
     const getDocType = () => {
@@ -260,12 +261,18 @@ export default function InvoiceForm() {
                     const defaultBank = banks.find(b => b.isDefault) || banks[0];
 
                     if (isNew) {
+                        let defaultIntro = mappedSettings.documentIntroText;
+                        // Use specific text for Invoice
+                        if (docType === 'Invoice') {
+                            defaultIntro = 'Dengan ini kami sampaikan rincian pesanan berdasarkan PO {PO_NUMBER} dengan nomor invoice {INVOICE_NUMBER}';
+                        }
+
                         setFormData(prev => ({
                             ...prev,
                             number: generateDocNumber(mappedSettings),
                             taxRate: mappedSettings.defaultTaxRate,
                             terms: mappedSettings.defaultTerms,
-                            introText: mappedSettings.documentIntroText,
+                            introText: defaultIntro,
                             signatureName: mappedSettings.signatureName,
                             signatureImage: mappedSettings.signatureImage,
                             selectedBankId: defaultBank?.id || '',
@@ -632,25 +639,55 @@ export default function InvoiceForm() {
             {/* Header with breadcrumb and actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm">
-                    <Link to="/documents" className="text-text-secondary hover:text-primary">{docType}s</Link>
+                    <Link to={docType === 'Quotation' ? '/quotations' : '/invoices'} className="text-text-secondary hover:text-primary">{docType === 'Quotation' ? 'Penawaran' : 'Faktur'}</Link>
                     <span className="text-text-secondary">/</span>
                     <span className="text-text-main dark:text-white font-medium">
-                        New {docType}
+                        {isViewOnly ? `Lihat ${docType === 'Quotation' ? 'Penawaran' : 'Faktur'}` : (isNew ? `Buat ${docType === 'Quotation' ? 'Penawaran' : 'Faktur'}` : `Ubah ${docType === 'Quotation' ? 'Penawaran' : 'Faktur'}`)}
                     </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    {savedJustNow && (
-                        <span className="text-green-500 text-sm flex items-center gap-1">
-                            <Check size={14} /> Saved just now
-                        </span>
+                    {isViewOnly ? (
+                        <>
+                            <Button
+                                variant="secondary"
+                                icon={Edit}
+                                onClick={() => navigate(`${docType === 'Quotation' ? '/quotations' : '/invoices'}/${id}`)}
+                            >
+                                Ubah
+                            </Button>
+                            <Button
+                                icon={Download}
+                                onClick={async () => {
+                                    try {
+                                        if (docType === 'Quotation') {
+                                            await quotations.downloadPDF(id, formData.number);
+                                        } else {
+                                            await invoices.downloadPDF(id, formData.number);
+                                        }
+                                    } catch (e) {
+                                        console.error('PDF download failed:', e);
+                                    }
+                                }}
+                            >
+                                Unduh PDF
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            {savedJustNow && (
+                                <span className="text-green-500 text-sm flex items-center gap-1">
+                                    <Check size={14} /> Disimpan baru saja
+                                </span>
+                            )}
+                            <Button
+                                icon={Save}
+                                onClick={() => handleSave()}
+                                disabled={saving}
+                            >
+                                {saving ? 'Menyimpan...' : 'Simpan'}
+                            </Button>
+                        </>
                     )}
-                    <Button
-                        icon={Save}
-                        onClick={() => handleSave()}
-                        disabled={saving}
-                    >
-                        {saving ? 'Saving...' : 'Save'}
-                    </Button>
                 </div>
             </div>
 
@@ -669,10 +706,10 @@ export default function InvoiceForm() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 max-w-md w-full mx-4 shadow-xl">
                         <h3 className="text-lg font-semibold text-text-main dark:text-white mb-3 flex items-center gap-2">
-                            ⚠️ Incomplete Document
+                            ⚠️ Dokumen Tidak Lengkap
                         </h3>
                         <p className="text-sm text-text-secondary mb-4">
-                            The following fields are missing or incomplete:
+                            Field berikut belum diisi atau tidak lengkap:
                         </p>
                         <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 mb-4 space-y-1">
                             {incompleteMissingFields.map((field, idx) => (
@@ -680,19 +717,19 @@ export default function InvoiceForm() {
                             ))}
                         </ul>
                         <p className="text-sm text-text-secondary mb-6">
-                            Would you like to save this as a <strong>Draft</strong>? You can complete it later.
+                            Apakah Anda ingin menyimpan ini sebagai <strong>Draft</strong>? Anda dapat melengkapinya nanti.
                         </p>
                         <div className="flex gap-3 justify-end">
                             <Button
                                 variant="secondary"
                                 onClick={() => setShowIncompletePopup(false)}
                             >
-                                Cancel
+                                Batal
                             </Button>
                             <Button
                                 onClick={() => handleSave(true)}
                             >
-                                Save as Draft
+                                Simpan sebagai Draft
                             </Button>
                         </div>
                     </div>
@@ -702,17 +739,17 @@ export default function InvoiceForm() {
             {/* Main Form + Preview Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Form Section */}
-                <div className="space-y-6">
+                <div className={`space-y-6 ${isViewOnly ? 'pointer-events-none opacity-90' : ''}`}>
                     {/* Document Details Card */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
                         <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2 mb-4">
-                            <span className="text-primary">📄</span> Document Details
+                            <span className="text-primary">📄</span> Detail Dokumen
                         </h3>
 
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-text-secondary mb-2">DATE</label>
+                                    <label className="block text-xs font-medium text-text-secondary mb-2">TANGGAL</label>
                                     <input
                                         type="date"
                                         value={formData.date}
@@ -735,7 +772,7 @@ export default function InvoiceForm() {
                                 {/* Show source quotation number for Invoice from Quotation */}
                                 {docType === 'Invoice' && isFromQuotation && formData.sourceQuotationNumber && (
                                     <div>
-                                        <label className="block text-xs font-medium text-text-secondary mb-2">NO SPH (Source)</label>
+                                        <label className="block text-xs font-medium text-text-secondary mb-2">NO SPH (Sumber)</label>
                                         <input
                                             type="text"
                                             value={formData.sourceQuotationNumber}
@@ -748,7 +785,7 @@ export default function InvoiceForm() {
 
                             {/* Customer Selection */}
                             <div>
-                                <label className="block text-xs font-medium text-text-secondary mb-2">CUSTOMER</label>
+                                <label className="block text-xs font-medium text-text-secondary mb-2">PELANGGAN</label>
                                 {formData.selectedClient ? (
                                     <div className="flex items-center justify-between p-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg">
                                         <span className="text-text-main dark:text-white text-sm">
@@ -766,7 +803,7 @@ export default function InvoiceForm() {
                                         <div className="relative">
                                             <input
                                                 type="text"
-                                                placeholder="Type customer name or search..."
+                                                placeholder="Ketik nama pelanggan atau cari..."
                                                 value={clientSearch}
                                                 onChange={(e) => {
                                                     setClientSearch(e.target.value);
@@ -797,7 +834,7 @@ export default function InvoiceForm() {
                                                                     className="w-full px-4 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20 border-t border-border-light dark:border-border-dark bg-green-50/50 dark:bg-green-900/10"
                                                                 >
                                                                     <p className="font-medium text-green-600 dark:text-green-400 text-sm flex items-center gap-1">
-                                                                        <Plus size={14} /> Create "{clientSearch}" as new customer
+                                                                        <Plus size={14} /> Buat "{clientSearch}" sebagai pelanggan baru
                                                                     </p>
                                                                 </button>
                                                             )}
@@ -808,13 +845,13 @@ export default function InvoiceForm() {
                                                             className="w-full px-4 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20"
                                                         >
                                                             <p className="font-medium text-green-600 dark:text-green-400 text-sm flex items-center gap-1">
-                                                                <Plus size={14} /> Create "{clientSearch}" as new customer
+                                                                <Plus size={14} /> Buat "{clientSearch}" sebagai pelanggan baru
                                                             </p>
-                                                            <p className="text-xs text-text-secondary">Click to add contact info</p>
+                                                            <p className="text-xs text-text-secondary">Klik untuk menambah info kontak</p>
                                                         </button>
                                                     ) : (
                                                         <div className="px-4 py-3 text-text-secondary text-sm">
-                                                            Type a customer name...
+                                                            Ketik nama pelanggan...
                                                         </div>
                                                     )}
                                                 </div>
@@ -824,21 +861,21 @@ export default function InvoiceForm() {
                                         {creatingNewClient && clientSearch.trim() && (
                                             <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                                                 <p className="text-xs text-green-700 dark:text-green-400 mb-2">
-                                                    New customer: <strong>{clientSearch}</strong>
+                                                    Pelanggan baru: <strong>{clientSearch}</strong>
                                                 </p>
                                                 <input
                                                     type="text"
-                                                    placeholder="Contact person name (UP)"
+                                                    placeholder="Nama kontak (UP)"
                                                     value={newContactName}
                                                     onChange={(e) => setNewContactName(e.target.value)}
                                                     className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                                 />
-                                                <p className="text-xs text-text-secondary mt-1">Will be created when you save the document</p>
+                                                <p className="text-xs text-text-secondary mt-1">Akan dibuat saat Anda menyimpan dokumen</p>
                                             </div>
                                         )}
                                         {clientSearch.trim() && !creatingNewClient && !formData.selectedClient && (
                                             <p className="text-xs text-green-600 dark:text-green-400">
-                                                💡 This will create a new customer when you save
+                                                💡 Ini akan membuat pelanggan baru saat Anda menyimpan
                                             </p>
                                         )}
                                     </div>
@@ -847,13 +884,13 @@ export default function InvoiceForm() {
 
                             {/* Intro Text (Editable) */}
                             <div>
-                                <label className="block text-xs font-medium text-text-secondary mb-2">Document Intro Text</label>
+                                <label className="block text-xs font-medium text-text-secondary mb-2">Teks Pengantar Dokumen</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={formData.poNumber}
                                         onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
-                                        placeholder="PO Number"
+                                        placeholder="No PO"
                                         className="w-24 px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                     />
                                     <input
@@ -864,7 +901,7 @@ export default function InvoiceForm() {
                                         className="flex-1 px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                     />
                                 </div>
-                                <p className="text-xs text-text-secondary mt-1">Use {'{PO_NUMBER}'} as placeholder for PO number</p>
+                                <p className="text-xs text-text-secondary mt-1">Gunakan {'{PO_NUMBER}'} sebagai placeholder untuk nomor PO</p>
                             </div>
                         </div>
                     </div>
@@ -879,7 +916,7 @@ export default function InvoiceForm() {
                                 onClick={addGroup}
                                 className="text-primary text-sm font-medium flex items-center gap-1 hover:bg-primary/5 px-3 py-1.5 rounded-lg"
                             >
-                                <Plus size={14} /> Add Group
+                                <Plus size={14} /> Tambah Grup
                             </button>
                         </div>
 
@@ -887,7 +924,7 @@ export default function InvoiceForm() {
                         <div className="space-y-4">
                             {itemGroups.length === 0 && (
                                 <div className="text-center py-8 text-text-secondary">
-                                    <p className="text-sm">Belum ada item. Klik <strong>"+ Add Group"</strong> untuk memulai.</p>
+                                    <p className="text-sm">Belum ada item. Klik <strong>"+ Tambah Grup"</strong> untuk memulai.</p>
                                 </div>
                             )}
                             {itemGroups.map((group) => (
@@ -990,7 +1027,7 @@ export default function InvoiceForm() {
                                                 onClick={() => addItem(group.id)}
                                                 className="w-full mt-2 py-2 text-xs text-text-secondary hover:text-primary hover:bg-primary/5 rounded border border-dashed border-border-light dark:border-border-dark flex items-center justify-center gap-1"
                                             >
-                                                <Plus size={12} /> Add New Item
+                                                <Plus size={12} /> Tambah Item Baru
                                             </button>
                                         </div>
                                     )}
@@ -1008,10 +1045,10 @@ export default function InvoiceForm() {
                                 >
                                     {formData.applyTax && <Check size={12} />}
                                 </button>
-                                <span className="text-sm text-text-main dark:text-white">Apply PPN {formData.taxRate}%</span>
+                                <span className="text-sm text-text-main dark:text-white">Terapkan PPN {formData.taxRate}%</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-sm text-text-secondary">Discount:</label>
+                                <label className="text-sm text-text-secondary">Diskon:</label>
                                 <input
                                     type="number"
                                     value={formData.discountPercent}
@@ -1040,23 +1077,23 @@ export default function InvoiceForm() {
                             value={formData.terms}
                             onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
                             rows={5}
-                            placeholder="Enter terms and conditions..."
+                            placeholder="Masukkan syarat dan ketentuan..."
                             className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white resize-none"
                         />
-                        <p className="text-xs text-text-secondary mt-1">Default terms loaded from Settings. You can edit per document.</p>
+                        <p className="text-xs text-text-secondary mt-1">Syarat default dimuat dari Pengaturan. Anda dapat mengubahnya per dokumen.</p>
                     </div>
 
                     {/* Bank Selection Card - Only for Quotations */}
                     {docType === 'Quotation' && (
                         <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                            <label className="block text-xs font-medium text-text-secondary mb-2">Bank Account</label>
+                            <label className="block text-xs font-medium text-text-secondary mb-2">Rekening Bank</label>
                             {bankAccounts.length > 0 ? (
                                 <select
                                     value={formData.selectedBankId}
                                     onChange={(e) => setFormData({ ...formData, selectedBankId: e.target.value })}
                                     className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                 >
-                                    <option value="">Select bank account</option>
+                                    <option value="">Pilih rekening bank</option>
                                     {bankAccounts.map(bank => (
                                         <option key={bank.id} value={bank.id}>
                                             {bank.bankName} - {bank.accountNum || bank.accountNumber} ({bank.holderName || bank.accountHolder})
@@ -1065,7 +1102,7 @@ export default function InvoiceForm() {
                                 </select>
                             ) : (
                                 <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
-                                    No bank accounts configured. <Link to="/settings" className="text-primary underline">Add in Settings</Link>
+                                    Belum ada rekening bank yang dikonfigurasi. <Link to="/settings" className="text-primary underline">Tambah di Pengaturan</Link>
                                 </div>
                             )}
                             {selectedBank && (
@@ -1080,18 +1117,18 @@ export default function InvoiceForm() {
 
                     {/* Signature Card */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
-                        <label className="block text-xs font-medium text-text-secondary mb-2">Signature</label>
+                        <label className="block text-xs font-medium text-text-secondary mb-2">Tanda Tangan</label>
                         <input
                             type="text"
                             value={formData.signatureName}
                             onChange={(e) => setFormData({ ...formData, signatureName: e.target.value })}
-                            placeholder="Signature name"
+                            placeholder="Nama penanda tangan"
                             className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                         />
                         {docType === 'Quotation' ? (
-                            <p className="text-xs text-text-secondary mt-1">Signature image can be configured in Settings.</p>
+                            <p className="text-xs text-text-secondary mt-1">Gambar tanda tangan dapat dikonfigurasi di Pengaturan.</p>
                         ) : (
-                            <p className="text-xs text-text-secondary mt-1">Invoice uses wet signature. Space will be left blank for signing.</p>
+                            <p className="text-xs text-text-secondary mt-1">Faktur menggunakan tanda tangan basah. Ruang akan dikosongkan untuk tanda tangan.</p>
                         )}
                     </div>
                 </div>
@@ -1100,10 +1137,10 @@ export default function InvoiceForm() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-text-main dark:text-white flex items-center gap-2">
-                            <span className="text-primary">👁️</span> Live Preview
+                            <span className="text-primary">👁️</span> Pratinjau Langsung
                         </h3>
                         <span className="text-xs text-text-secondary bg-background-light dark:bg-background-dark px-2 py-1 rounded">
-                            A4 Format
+                            Format A4
                         </span>
                     </div>
 
@@ -1123,7 +1160,7 @@ export default function InvoiceForm() {
                                 </div>
                                 <div className="flex-1">
                                     <h1 className="text-xl font-bold text-blue-800">{companySettings.companyName}</h1>
-                                    <p className="text-[8px] text-slate-600">Office: {companySettings.address}</p>
+                                    <p className="text-[8px] text-slate-600">Alamat: {companySettings.address}</p>
                                     <p className="text-[8px] text-slate-600">{companySettings.city}</p>
                                     {companySettings.workshop && (
                                         <p className="text-[8px] text-slate-600">Workshop: {companySettings.workshop}</p>
@@ -1135,7 +1172,7 @@ export default function InvoiceForm() {
                                     <table className="border border-slate-300">
                                         <tbody>
                                             <tr>
-                                                <td className="border border-slate-300 px-2 py-1 font-medium bg-slate-50">DATE</td>
+                                                <td className="border border-slate-300 px-2 py-1 font-medium bg-slate-50">TANGGAL</td>
                                                 <td className="border border-slate-300 px-2 py-1">{formatDate(formData.date)}</td>
                                             </tr>
                                             <tr>
@@ -1152,9 +1189,9 @@ export default function InvoiceForm() {
                                 <table className="w-full border-collapse">
                                     <tbody>
                                         <tr>
-                                            <td className="bg-blue-800 text-white px-3 py-1.5 font-bold w-24" style={{ fontSize: '10px' }}>CUSTOMER</td>
+                                            <td className="bg-blue-800 text-white px-3 py-1.5 font-bold w-24" style={{ fontSize: '10px' }}>PELANGGAN</td>
                                             <td className="bg-blue-100 px-3 py-1.5 text-blue-800 font-medium" style={{ fontSize: '10px' }}>
-                                                {formData.selectedClient?.name || (creatingNewClient && clientSearch ? clientSearch : 'Select Customer')} / UP : {formData.selectedClient?.contactName || (creatingNewClient ? (newContactName || '-') : '-')}
+                                                {formData.selectedClient?.name || (creatingNewClient && clientSearch ? clientSearch : 'Pilih Pelanggan')} / UP : {formData.selectedClient?.contactName || (creatingNewClient ? (newContactName || '-') : '-')}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1221,7 +1258,7 @@ export default function InvoiceForm() {
                                             </tr>
                                             {formData.discountPercent > 0 && (
                                                 <tr className="text-red-600">
-                                                    <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">Discount {formData.discountPercent}%</td>
+                                                    <td className="border border-slate-300 px-2 py-1 font-bold bg-slate-50">Diskon {formData.discountPercent}%</td>
                                                     <td className="border border-slate-300 px-2 py-1 text-right">Rp</td>
                                                     <td className="border border-slate-300 px-2 py-1 text-right">-{formatIDR(discountAmount)}</td>
                                                 </tr>
@@ -1234,7 +1271,7 @@ export default function InvoiceForm() {
                                                 </tr>
                                             )}
                                             <tr className="bg-yellow-100">
-                                                <td className="border border-slate-300 px-2 py-1.5 font-bold">Grand Total</td>
+                                                <td className="border border-slate-300 px-2 py-1.5 font-bold">Total Akhir</td>
                                                 <td className="border border-slate-300 px-2 py-1.5 text-right font-bold">Rp</td>
                                                 <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-blue-800">{formatIDR(total)}</td>
                                             </tr>

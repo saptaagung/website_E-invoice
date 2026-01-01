@@ -60,14 +60,14 @@ export default function NewInvoiceSelector() {
         <div className="flex flex-col gap-6 pb-10 max-w-4xl mx-auto">
             {/* Header */}
             <div className="flex items-center gap-2 text-sm">
-                <Link to="/invoices" className="text-text-secondary hover:text-primary">Invoices</Link>
+                <Link to="/invoices" className="text-text-secondary hover:text-primary">Faktur</Link>
                 <span className="text-text-secondary">/</span>
-                <span className="text-text-main dark:text-white font-medium">New Invoice</span>
+                <span className="text-text-main dark:text-white font-medium">Buat Faktur Baru</span>
             </div>
 
             <div className="text-center mb-4">
-                <h1 className="text-2xl font-bold text-text-main dark:text-white">Create New Invoice</h1>
-                <p className="text-text-secondary mt-1">Choose how you want to create your invoice</p>
+                <h1 className="text-2xl font-bold text-text-main dark:text-white">Buat Faktur Baru</h1>
+                <p className="text-text-secondary mt-1">Pilih cara membuat faktur Anda</p>
             </div>
 
             {step === 'select' && (
@@ -80,12 +80,12 @@ export default function NewInvoiceSelector() {
                         <div className="size-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <Copy size={28} />
                         </div>
-                        <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">From Quotation</h3>
+                        <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">Dari Penawaran</h3>
                         <p className="text-sm text-text-secondary mb-4">
-                            Convert an accepted quotation to an invoice. All client info, items, and totals will be copied automatically.
+                            Konversi penawaran yang diterima menjadi faktur. Semua info klien, item, dan total akan disalin secara otomatis.
                         </p>
                         <div className="flex items-center gap-2 text-primary font-medium text-sm">
-                            <span>Recommended</span>
+                            <span>Direkomendasikan</span>
                             <ArrowRight size={16} />
                         </div>
                     </button>
@@ -98,12 +98,12 @@ export default function NewInvoiceSelector() {
                         <div className="size-14 rounded-xl bg-slate-100 dark:bg-slate-800 text-text-secondary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <Plus size={28} />
                         </div>
-                        <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">Standalone Invoice</h3>
+                        <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">Faktur Kosong (Baru)</h3>
                         <p className="text-sm text-text-secondary mb-4">
-                            Create a new invoice from scratch. Use this when there was no prior quotation.
+                            Buat faktur baru dari awal. Gunakan ini jika tidak ada penawaran sebelumnya.
                         </p>
                         <div className="flex items-center gap-2 text-text-secondary font-medium text-sm group-hover:text-primary">
-                            <span>Manual Entry</span>
+                            <span>Entri Manual</span>
                             <ArrowRight size={16} />
                         </div>
                     </Link>
@@ -116,14 +116,14 @@ export default function NewInvoiceSelector() {
                     <div className="p-6 border-b border-border-light dark:border-border-dark">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="font-semibold text-text-main dark:text-white">Select Quotation to Convert</h3>
-                                <p className="text-sm text-text-secondary">Choose a quotation to create an invoice from</p>
+                                <h3 className="font-semibold text-text-main dark:text-white">Pilih Penawaran untuk Dikonversi</h3>
+                                <p className="text-sm text-text-secondary">Pilih penawaran untuk membuat faktur darinya</p>
                             </div>
                             <button
                                 onClick={() => setStep('select')}
                                 className="text-sm text-text-secondary hover:text-primary"
                             >
-                                ← Back
+                                ← Kembali
                             </button>
                         </div>
 
@@ -134,7 +134,7 @@ export default function NewInvoiceSelector() {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search quotations..."
+                                placeholder="Cari penawaran..."
                                 className="w-full pl-10 pr-4 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                         </div>
@@ -145,11 +145,11 @@ export default function NewInvoiceSelector() {
                         {loading ? (
                             <div className="p-8 text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                <p className="text-sm text-text-secondary mt-2">Loading quotations...</p>
+                                <p className="text-sm text-text-secondary mt-2">Memuat penawaran...</p>
                             </div>
                         ) : filteredQuotations.length === 0 ? (
                             <div className="p-8 text-center">
-                                <p className="text-sm text-text-secondary">No quotations found.</p>
+                                <p className="text-sm text-text-secondary">Tidak ada penawaran ditemukan.</p>
                             </div>
                         ) : (
                             filteredQuotations.map((quotation) => (
@@ -190,7 +190,7 @@ export default function NewInvoiceSelector() {
                             <div>
                                 {selectedQuotation && (
                                     <p className="text-sm text-text-secondary">
-                                        Selected: <span className="font-medium text-text-main dark:text-white">{selectedQuotation.id}</span>
+                                        Dipilih: <span className="font-medium text-text-main dark:text-white">{selectedQuotation.id}</span>
                                     </p>
                                 )}
                             </div>
@@ -199,7 +199,7 @@ export default function NewInvoiceSelector() {
                                 disabled={!selectedQuotation}
                                 icon={FileText}
                             >
-                                Convert to Invoice
+                                Konversi ke Faktur
                             </Button>
                         </div>
                     </div>

@@ -4,10 +4,10 @@ import { Button } from '../components/ui';
 import { settings as settingsApi } from '../lib/api';
 
 const tabs = [
-    { key: 'company', label: 'Company Profile' },
-    { key: 'banking', label: 'Banking Details' },
-    { key: 'tax', label: 'Tax & Rules' },
-    { key: 'templates', label: 'Templates' },
+    { key: 'company', label: 'Profil Perusahaan' },
+    { key: 'banking', label: 'Detail Bank' },
+    { key: 'tax', label: 'Pajak & Aturan' },
+
 ];
 
 export default function Settings() {
@@ -39,7 +39,7 @@ export default function Settings() {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                setError('Logo file size must be less than 2MB');
+                setError('Ukuran file logo harus kurang dari 2MB');
                 return;
             }
             const reader = new FileReader();
@@ -55,7 +55,7 @@ export default function Settings() {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 1 * 1024 * 1024) {
-                setError('Signature file size must be less than 1MB');
+                setError('Ukuran file tanda tangan harus kurang dari 1MB');
                 return;
             }
             const reader = new FileReader();
@@ -184,7 +184,7 @@ export default function Settings() {
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
         } catch (err) {
-            setError(err.message || 'Failed to save settings');
+            setError(err.message || 'Gagal menyimpan pengaturan');
         } finally {
             setSaving(false);
         }
@@ -200,19 +200,19 @@ export default function Settings() {
             setNewBankAccount({ bankName: '', accountNumber: '', accountHolder: '' });
             setShowAddBank(false);
         } catch (err) {
-            setError(err.message || 'Failed to add bank account');
+            setError(err.message || 'Gagal menambahkan rekening bank');
         }
     };
 
     // Delete bank account
     const handleDeleteBankAccount = async (id) => {
-        if (!confirm('Are you sure you want to delete this bank account?')) return;
+        if (!confirm('Apakah Anda yakin ingin menghapus rekening bank ini?')) return;
 
         try {
             await settingsApi.deleteBankAccount(id);
             setBankAccounts(prev => prev.filter(b => b.id !== id));
         } catch (err) {
-            setError(err.message || 'Failed to delete bank account');
+            setError(err.message || 'Gagal menghapus rekening bank');
         }
     };
 
@@ -238,8 +238,8 @@ export default function Settings() {
         <div className="flex flex-col gap-8 pb-10">
             {/* Page Heading */}
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-text-main dark:text-white">Settings</h1>
-                <p className="text-text-secondary text-base">Manage your company profile, financial preferences, and templates.</p>
+                <h1 className="text-3xl font-black tracking-tight text-text-main dark:text-white">Pengaturan</h1>
+                <p className="text-text-secondary text-base">Kelola profil perusahaan, preferensi keuangan, dan templat Anda.</p>
             </div>
 
             {/* Error/Success Messages */}
@@ -251,7 +251,7 @@ export default function Settings() {
             {saveSuccess && (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-600 dark:text-green-400 text-sm flex items-center gap-2">
                     <Check size={18} />
-                    Settings saved successfully!
+                    Pengaturan berhasil disimpan!
                 </div>
             )}
 
@@ -276,12 +276,12 @@ export default function Settings() {
             {/* Company Profile Section */}
             {activeTab === 'company' && (
                 <section className="flex flex-col gap-6">
-                    <h2 className="text-lg font-bold text-text-main dark:text-white">Company Identity</h2>
+                    <h2 className="text-lg font-bold text-text-main dark:text-white">Identitas Perusahaan</h2>
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 sm:p-8">
                         <div className="flex flex-col md:flex-row gap-8">
                             {/* Logo Upload */}
                             <div className="flex flex-col gap-4 items-center md:items-start min-w-[160px]">
-                                <span className="text-sm font-medium text-text-main dark:text-gray-300">Company Logo</span>
+                                <span className="text-sm font-medium text-text-main dark:text-gray-300">Logo Perusahaan</span>
                                 <label className="group relative h-32 w-32 rounded-full bg-background-light dark:bg-gray-800 border-2 border-dashed border-border-light dark:border-border-dark flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden">
                                     <input
                                         type="file"
@@ -294,13 +294,13 @@ export default function Settings() {
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-text-secondary group-hover:text-primary transition-colors">
                                             <Upload size={24} />
-                                            <span className="text-xs font-medium mt-1">Upload</span>
+                                            <span className="text-xs font-medium mt-1">Unggah</span>
                                         </div>
                                     )}
                                     {companyData.logo && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Upload size={24} className="text-white" />
-                                            <span className="text-xs font-medium mt-1 text-white">Change</span>
+                                            <span className="text-xs font-medium mt-1 text-white">Ubah</span>
                                         </div>
                                     )}
                                 </label>
@@ -309,16 +309,16 @@ export default function Settings() {
                                         onClick={() => setCompanyData({ ...companyData, logo: '' })}
                                         className="text-xs text-red-500 hover:text-red-700"
                                     >
-                                        Remove Logo
+                                        Hapus Logo
                                     </button>
                                 )}
-                                <p className="text-xs text-text-secondary text-center md:text-left">Max file size 2MB.<br />PNG or JPG recommended.</p>
+                                <p className="text-xs text-text-secondary text-center md:text-left">Ukuran file maks 2MB.<br />Disarankan PNG atau JPG.</p>
                             </div>
 
                             {/* Form Fields */}
                             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                                 <div className="col-span-1 md:col-span-2">
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Legal Company Name</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Nama Resmi Perusahaan</label>
                                     <input
                                         type="text"
                                         value={companyData.companyName}
@@ -346,7 +346,7 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Phone Number</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Nomor Telepon</label>
                                     <input
                                         type="text"
                                         value={companyData.phone}
@@ -365,7 +365,7 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div className="col-span-1 md:col-span-2">
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Registered Address</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Alamat Terdaftar</label>
                                     <textarea
                                         value={companyData.address}
                                         onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
@@ -384,7 +384,7 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Workshop Address</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Alamat Workshop</label>
                                     <input
                                         type="text"
                                         value={companyData.workshop}
@@ -398,11 +398,11 @@ export default function Settings() {
                     </div>
 
                     {/* Signature Image Section */}
-                    <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Signature Settings</h2>
+                    <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Pengaturan Tanda Tangan</h2>
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 sm:p-8">
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="flex flex-col gap-4 items-center md:items-start min-w-[160px]">
-                                <span className="text-sm font-medium text-text-main dark:text-gray-300">Signature Image</span>
+                                <span className="text-sm font-medium text-text-main dark:text-gray-300">Gambar Tanda Tangan</span>
                                 <label className="group relative h-24 w-48 bg-background-light dark:bg-gray-800 border-2 border-dashed border-border-light dark:border-border-dark flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden rounded-lg">
                                     <input
                                         type="file"
@@ -415,13 +415,13 @@ export default function Settings() {
                                     ) : (
                                         <div className="flex flex-col items-center justify-center text-text-secondary group-hover:text-primary transition-colors">
                                             <Upload size={20} />
-                                            <span className="text-xs font-medium mt-1">Upload Signature</span>
+                                            <span className="text-xs font-medium mt-1">Unggah</span>
                                         </div>
                                     )}
                                     {companyData.signatureImage && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Upload size={20} className="text-white" />
-                                            <span className="text-xs font-medium mt-1 text-white">Change</span>
+                                            <span className="text-xs font-medium mt-1 text-white">Ubah</span>
                                         </div>
                                     )}
                                 </label>
@@ -430,10 +430,10 @@ export default function Settings() {
                                         onClick={() => setCompanyData({ ...companyData, signatureImage: '' })}
                                         className="text-xs text-red-500 hover:text-red-700"
                                     >
-                                        Remove Signature
+                                        Hapus Tanda Tangan
                                     </button>
                                 )}
-                                <p className="text-xs text-text-secondary">Max 1MB. Transparent PNG recommended.</p>
+                                <p className="text-xs text-text-secondary">Maks 1MB. Disarankan PNG transparan.</p>
                             </div>
                         </div>
                     </div>
@@ -444,23 +444,23 @@ export default function Settings() {
             {activeTab === 'banking' && (
                 <section className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-text-main dark:text-white">Banking Details</h2>
+                        <h2 className="text-lg font-bold text-text-main dark:text-white">Detail Bank</h2>
                         <button
                             onClick={() => setShowAddBank(true)}
                             className="text-primary text-sm font-bold flex items-center gap-1 hover:text-primary-dark transition-colors"
                         >
                             <Plus size={20} />
-                            Add Account
+                            Tambah Akun
                         </button>
                     </div>
 
                     {/* Add Bank Form */}
                     {showAddBank && (
                         <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-primary/30 shadow-sm p-6">
-                            <h3 className="text-base font-bold text-text-main dark:text-white mb-4">Add New Bank Account</h3>
+                            <h3 className="text-base font-bold text-text-main dark:text-white mb-4">Tambah Rekening Bank Baru</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Bank Name</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Nama Bank</label>
                                     <input
                                         type="text"
                                         value={newBankAccount.bankName}
@@ -470,7 +470,7 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Account Number</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Nomor Rekening</label>
                                     <input
                                         type="text"
                                         value={newBankAccount.accountNumber}
@@ -480,7 +480,7 @@ export default function Settings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Account Holder</label>
+                                    <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Pemilik Rekening</label>
                                     <input
                                         type="text"
                                         value={newBankAccount.accountHolder}
@@ -495,13 +495,13 @@ export default function Settings() {
                                     onClick={() => setShowAddBank(false)}
                                     className="px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-sm font-medium text-text-main dark:text-gray-300 hover:bg-background-light dark:hover:bg-gray-800 transition-colors"
                                 >
-                                    Cancel
+                                    Batal
                                 </button>
                                 <button
                                     onClick={handleAddBankAccount}
                                     className="px-4 py-2 bg-primary hover:bg-primary-dark text-white font-semibold rounded-lg transition-all"
                                 >
-                                    Add Account
+                                    Tambah Akun
                                 </button>
                             </div>
                         </div>
@@ -512,17 +512,17 @@ export default function Settings() {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-background-light/50 dark:bg-gray-800/50 border-b border-border-light dark:border-border-dark">
                                     <tr>
-                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Bank Name</th>
-                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Account Number</th>
-                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Holder Name</th>
-                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-right">Actions</th>
+                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Nama Bank</th>
+                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Nomor Rekening</th>
+                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Nama Pemilik</th>
+                                        <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary text-right">Tindakan</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-light dark:divide-border-dark">
                                     {bankAccounts.length === 0 ? (
                                         <tr>
                                             <td colSpan={4} className="py-8 px-6 text-center text-text-secondary">
-                                                No bank accounts added yet. Click "Add Account" to create one.
+                                                Belum ada rekening bank. Klik "Tambah Akun" untuk membuat satu.
                                             </td>
                                         </tr>
                                     ) : (
@@ -546,7 +546,7 @@ export default function Settings() {
                             </table>
                         </div>
                         <div className="border-t border-border-light dark:border-border-dark p-4 bg-background-light/50 dark:bg-gray-800/30 flex justify-center">
-                            <span className="text-xs text-text-secondary">Payment details will appear on invoices.</span>
+                            <span className="text-xs text-text-secondary">Detail pembayaran akan muncul pada faktur.</span>
                         </div>
                     </div>
                 </section>
@@ -555,7 +555,7 @@ export default function Settings() {
             {/* Tax & Rules Section */}
             {activeTab === 'tax' && (
                 <section className="flex flex-col gap-6">
-                    <h2 className="text-lg font-bold text-text-main dark:text-white">Financial Configuration</h2>
+                    <h2 className="text-lg font-bold text-text-main dark:text-white">Konfigurasi Keuangan</h2>
 
                     {/* Tax Settings Row */}
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
@@ -565,8 +565,8 @@ export default function Settings() {
                                     <Percent size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-bold text-text-main dark:text-white">Default Tax Rate</h3>
-                                    <p className="text-sm text-text-secondary">Applied to new invoice items</p>
+                                    <h3 className="text-base font-bold text-text-main dark:text-white">Tarif Pajak Default</h3>
+                                    <p className="text-sm text-text-secondary">Diterapkan pada item faktur baru</p>
                                 </div>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -580,7 +580,7 @@ export default function Settings() {
                             </label>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Tax Name & Percentage</label>
+                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">Nama Pajak & Persentase</label>
                             <div className="flex gap-2 max-w-md">
                                 <input
                                     type="text"
@@ -604,8 +604,8 @@ export default function Settings() {
                     </div>
 
                     {/* Document Numbering Section */}
-                    <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Document Numbering</h2>
-                    <p className="text-sm text-text-secondary -mt-4">Configure auto-increment format for each document type</p>
+                    <h2 className="text-lg font-bold text-text-main dark:text-white mt-4">Penomoran Dokumen</h2>
+                    <p className="text-sm text-text-secondary -mt-4">Konfigurasi format kenaikan otomatis untuk setiap jenis dokumen</p>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Invoice Numbering */}
@@ -615,13 +615,13 @@ export default function Settings() {
                                     <Hash size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-bold text-text-main dark:text-white">Invoice</h3>
+                                    <h3 className="text-base font-bold text-text-main dark:text-white">Faktur</h3>
                                     <p className="text-xs text-text-secondary">Faktur/Tagihan</p>
                                 </div>
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Prefix Format</label>
+                                    <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Format Awalan</label>
                                     <input
                                         type="text"
                                         value={invoiceNumbering.prefix}
@@ -631,7 +631,7 @@ export default function Settings() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Next No.</label>
+                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Nomor Berikutnya</label>
                                         <input
                                             type="number"
                                             value={invoiceNumbering.nextNumber}
@@ -640,7 +640,7 @@ export default function Settings() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Padding</label>
+                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Digit (Padding)</label>
                                         <select
                                             value={invoiceNumbering.padding}
                                             onChange={(e) => setInvoiceNumbering({ ...invoiceNumbering, padding: parseInt(e.target.value) })}
@@ -672,7 +672,7 @@ export default function Settings() {
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Prefix Format</label>
+                                    <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Format Awalan</label>
                                     <input
                                         type="text"
                                         value={sphNumbering.prefix}
@@ -682,7 +682,7 @@ export default function Settings() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Next No.</label>
+                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Nomor Berikutnya</label>
                                         <input
                                             type="number"
                                             value={sphNumbering.nextNumber}
@@ -691,7 +691,7 @@ export default function Settings() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Padding</label>
+                                        <label className="block text-xs font-medium text-text-main dark:text-gray-300 mb-1.5">Digit (Padding)</label>
                                         <select
                                             value={sphNumbering.padding}
                                             onChange={(e) => setSphNumbering({ ...sphNumbering, padding: parseInt(e.target.value) })}
@@ -713,7 +713,7 @@ export default function Settings() {
 
                     {/* Format Help */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <p className="text-sm font-medium text-text-main dark:text-white mb-2">Available Format Variables:</p>
+                        <p className="text-sm font-medium text-text-main dark:text-white mb-2">Variabel Format Tersedia:</p>
                         <div className="flex flex-wrap gap-2">
                             <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded text-xs font-mono text-primary border border-border-light dark:border-border-dark">{'{YYYY}'} = Year</code>
                             <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded text-xs font-mono text-primary border border-border-light dark:border-border-dark">{'{MM}'} = Month</code>
@@ -724,52 +724,7 @@ export default function Settings() {
             )}
 
             {/* Templates Section */}
-            {activeTab === 'templates' && (
-                <section className="flex flex-col gap-6">
-                    <h2 className="text-lg font-bold text-text-main dark:text-white">PDF Templates</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Template 1 - Active */}
-                        <div className="group relative cursor-pointer">
-                            <div className="absolute -top-2 -right-2 z-10 bg-primary text-white rounded-full p-1 shadow-lg">
-                                <Check size={18} />
-                            </div>
-                            <div className="aspect-[210/297] bg-background-light dark:bg-gray-800 rounded-xl border-2 border-primary overflow-hidden shadow-md">
-                                <div className="h-full w-full flex items-center justify-center text-text-secondary">
-                                    <span className="text-sm">Modern Blue Template</span>
-                                </div>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between">
-                                <span className="text-sm font-bold text-text-main dark:text-white">Modern Blue</span>
-                                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">Active</span>
-                            </div>
-                        </div>
 
-                        {/* Template 2 */}
-                        <div className="group relative cursor-pointer">
-                            <div className="aspect-[210/297] bg-background-light dark:bg-gray-800 rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:border-primary hover:shadow-md transition-all">
-                                <div className="h-full w-full flex items-center justify-center text-text-secondary">
-                                    <span className="text-sm">Minimal Mono Template</span>
-                                </div>
-                            </div>
-                            <div className="mt-3">
-                                <span className="text-sm font-bold text-text-secondary group-hover:text-primary transition-colors">Minimal Mono</span>
-                            </div>
-                        </div>
-
-                        {/* Template 3 */}
-                        <div className="group relative cursor-pointer">
-                            <div className="aspect-[210/297] bg-background-light dark:bg-gray-800 rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:border-primary hover:shadow-md transition-all">
-                                <div className="h-full w-full flex items-center justify-center text-text-secondary">
-                                    <span className="text-sm">Classic Corporate Template</span>
-                                </div>
-                            </div>
-                            <div className="mt-3">
-                                <span className="text-sm font-bold text-text-secondary group-hover:text-primary transition-colors">Classic Corporate</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            )}
 
             {/* Save Button */}
             <div className="flex justify-end pt-4">
@@ -777,10 +732,10 @@ export default function Settings() {
                     {saving ? (
                         <div className="flex items-center gap-2">
                             <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Saving...
+                            Menyimpan...
                         </div>
                     ) : (
-                        'Save Changes'
+                        'Simpan Perubahan'
                     )}
                 </Button>
             </div>
