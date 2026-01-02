@@ -509,7 +509,7 @@ export default function Settings() {
 
                     <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                            <table className="w-full text-left border-collapse min-w-[500px]">
                                 <thead className="bg-background-light/50 dark:bg-gray-800/50 border-b border-border-light dark:border-border-dark">
                                     <tr>
                                         <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-text-secondary">Nama Bank</th>

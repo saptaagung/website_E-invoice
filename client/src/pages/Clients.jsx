@@ -448,7 +448,7 @@ export default function Clients() {
             {/* Clients Table */}
             <div className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr className="bg-background-light/50 dark:bg-gray-800/50 border-b border-border-light dark:border-border-dark">
                                 <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider w-[25%]">Nama Klien</th>

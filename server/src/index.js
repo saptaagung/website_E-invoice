@@ -18,9 +18,12 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true
+    credentials: true,
+    exposedHeaders: ['Content-Disposition']
 }));
-app.use(express.json());
+// Increase JSON body limit for base64 image uploads (logos, signatures)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -37,9 +40,18 @@ app.use('/api/settings', settingsRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
+
+    // Handle payload too large error
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({
+            error: 'File terlalu besar',
+            message: 'Ukuran file melebihi batas maksimum (10MB). Silakan kompres atau gunakan gambar yang lebih kecil.'
+        });
+    }
+
     res.status(500).json({
-        error: 'Something went wrong!',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+        error: 'Terjadi kesalahan',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Silakan coba lagi nanti.'
     });
 });
 

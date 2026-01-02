@@ -267,7 +267,12 @@ router.get('/:id/pdf', async (req, res) => {
         const pdfBuffer = await generateQuotationPDF(quotation, companySettings);
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${quotation.quotationNumber.replace(/\//g, '-')}.pdf"`);
+        // Filename format: Penawaran ClientName DD-MM-YYYY.pdf
+        const clientName = (quotation.client?.name || 'Client').replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 30).trim();
+        const issueDate = new Date(quotation.issueDate);
+        const dateStr = `${String(issueDate.getDate()).padStart(2, '0')}-${String(issueDate.getMonth() + 1).padStart(2, '0')}-${issueDate.getFullYear()}`;
+        const fileName = `Penawaran ${clientName} ${dateStr}.pdf`;
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         res.send(pdfBuffer);

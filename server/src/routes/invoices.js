@@ -310,7 +310,12 @@ router.get('/:id/pdf', async (req, res) => {
 
         // Set headers for PDF download
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber.replace(/\//g, '-')}.pdf"`);
+        // Filename format: Faktur ClientName DD-MM-YYYY.pdf
+        const clientName = (invoice.client?.name || 'Client').replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 30).trim();
+        const issueDate = new Date(invoice.issueDate);
+        const dateStr = `${String(issueDate.getDate()).padStart(2, '0')}-${String(issueDate.getMonth() + 1).padStart(2, '0')}-${issueDate.getFullYear()}`;
+        const fileName = `Faktur ${clientName} ${dateStr}.pdf`;
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
 
         res.send(pdfBuffer);

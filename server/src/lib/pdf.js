@@ -373,13 +373,6 @@ export function generateQuotationPDF(quotation, companySettings) {
                 y += introHeight + 10;
             }
 
-            // Intro Text
-            if (quotation.poNumber || quotation.documentIntroText) {
-                const intro = `Dengan ini kami sampaikan Rincian order PO : ${quotation.poNumber || '____'} Sebagai berikut :`;
-                doc.font('Helvetica').fontSize(9).fillColor(TEXT_SECONDARY).text(intro, 40, y);
-                y += 20;
-            }
-
             // --- ITEMS TABLE ---
             const tableTop = y;
             // Removed 'No' column to match Preview.
