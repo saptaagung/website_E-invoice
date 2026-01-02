@@ -164,11 +164,25 @@ export const invoices = {
 
         if (!response.ok) throw new Error('Failed to download PDF');
 
+        // Get filename from Content-Disposition header
+        let fileName = `Invoice-${id}.pdf`;
+        const contentDisposition = response.headers.get('Content-Disposition');
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (match && match[1]) {
+                fileName = match[1];
+            }
+        }
+        // Fallback to invoiceNumber if no header
+        if (!contentDisposition && invoiceNumber) {
+            fileName = `${invoiceNumber.replace(/\//g, '-')}.pdf`;
+        }
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${invoiceNumber.replace(/\//g, '-')}.pdf`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -208,11 +222,25 @@ export const quotations = {
 
         if (!response.ok) throw new Error('Failed to download PDF');
 
+        // Get filename from Content-Disposition header
+        let fileName = `Quotation-${id}.pdf`;
+        const contentDisposition = response.headers.get('Content-Disposition');
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (match && match[1]) {
+                fileName = match[1];
+            }
+        }
+        // Fallback to quotationNumber if no header
+        if (!contentDisposition && quotationNumber) {
+            fileName = `${quotationNumber.replace(/\//g, '-')}.pdf`;
+        }
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${quotationNumber.replace(/\//g, '-')}.pdf`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);

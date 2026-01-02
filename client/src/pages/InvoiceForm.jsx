@@ -23,22 +23,23 @@ const terbilang = (amount) => {
     return numberToWords(Math.floor(amount)) + ' Rupiah';
 };
 
-// Default company settings (fallback)
+// Default company settings (empty - will be populated from API)
 const defaultCompanySettings = {
-    companyName: 'PT SETIA HABA TEKNOLOGI',
-    legalName: 'PT Setia Haba Teknologi',
-    address: 'Jl. Melati III BSD Blok C8/21 Sektor 1.6, Rawabuntu',
-    city: 'Serpong, Tangerang Selatan 15318',
-    workshop: 'Jl Angsana 21, Rawabuntu, Serpong, Tangerang Selatan',
-    email: 'ptsetiahabateknologi@gmail.com',
-    phone: '021-70044184',
-    quotationPrefix: 'SPG/',
-    quotationNextNum: 31,
-    invoicePrefix: 'INV/',
+    companyName: '',
+    legalName: '',
+    address: '',
+    city: '',
+    workshop: '',
+    email: '',
+    phone: '',
+    quotationPrefix: 'QT/{YYYY}/{MM}/',
+    quotationNextNum: 1,
+    invoicePrefix: 'INV/{YYYY}/{MM}/',
     invoiceNextNum: 1,
     defaultTaxRate: 11,
-    signatureName: 'Haikal Ahmed Al-Muzani',
+    signatureName: '',
     signatureImage: null,
+    logo: '',
     documentIntroText: 'Dengan ini kami sampaikan Rincian order PO : {PO_NUMBER} Sebagai berikut :',
     defaultTerms: `1. Harga termasuk biaya antar Jakarta & termasuk PPN 11%
 2. Barang akan langsung dikirim, saat pembayaran sudah di konfirmasi
@@ -901,7 +902,6 @@ export default function InvoiceForm() {
                                         className="flex-1 px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white"
                                     />
                                 </div>
-                                <p className="text-xs text-text-secondary mt-1">Gunakan {'{PO_NUMBER}'} sebagai placeholder untuk nomor PO</p>
                             </div>
                         </div>
                     </div>
@@ -951,78 +951,80 @@ export default function InvoiceForm() {
                                     {/* Group Items */}
                                     {group.expanded && (
                                         <div className="p-3">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="text-text-secondary text-xs">
-                                                        <th className="text-left pb-2 font-medium w-24">MODEL</th>
-                                                        <th className="text-left pb-2 font-medium">DESKRIPSI</th>
-                                                        <th className="text-center pb-2 font-medium w-20">JML/SAT</th>
-                                                        <th className="text-right pb-2 font-medium w-28">HARGA</th>
-                                                        <th className="w-8"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {group.items.map((item) => (
-                                                        <tr key={item.id}>
-                                                            <td className="py-1.5 pr-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={item.model}
-                                                                    onChange={(e) => updateItem(group.id, item.id, 'model', e.target.value)}
-                                                                    placeholder="MGP24X"
-                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                                />
-                                                            </td>
-                                                            <td className="py-1.5 pr-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={item.description}
-                                                                    onChange={(e) => updateItem(group.id, item.id, 'description', e.target.value)}
-                                                                    placeholder="Digital Mixer 24CH"
-                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                                />
-                                                            </td>
-                                                            <td className="py-1.5 pr-2">
-                                                                <div className="flex items-center gap-1">
-                                                                    <input
-                                                                        type="number"
-                                                                        value={item.qty}
-                                                                        onChange={(e) => updateItem(group.id, item.id, 'qty', parseInt(e.target.value) || 0)}
-                                                                        className="w-10 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
-                                                                    />
-                                                                    <select
-                                                                        value={item.unit}
-                                                                        onChange={(e) => updateItem(group.id, item.id, 'unit', e.target.value)}
-                                                                        className="w-12 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
-                                                                    >
-                                                                        <option value="unit">unit</option>
-                                                                        <option value="set">set</option>
-                                                                        <option value="pcs">pcs</option>
-                                                                        <option value="lot">lot</option>
-                                                                    </select>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-1.5 pr-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={item.rate ? formatIDR(item.rate) : ''}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value.replace(/[^\d]/g, '');
-                                                                        updateItem(group.id, item.id, 'rate', parseInt(val) || 0);
-                                                                    }}
-                                                                    placeholder="36,000,000"
-                                                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-right text-text-main dark:text-white"
-                                                                />
-                                                            </td>
-                                                            <td className="py-1.5">
-                                                                <button onClick={() => removeItem(group.id, item.id)} className="text-text-secondary hover:text-red-500">
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </td>
+                                            <div className="overflow-x-auto -mx-3 px-3">
+                                                <table className="w-full text-sm min-w-[620px]">
+                                                    <thead>
+                                                        <tr className="text-text-secondary text-xs">
+                                                            <th className="text-left pb-2 font-medium w-24">MODEL</th>
+                                                            <th className="text-left pb-2 font-medium min-w-[120px]">DESKRIPSI</th>
+                                                            <th className="text-center pb-2 font-medium w-36">JML/SAT</th>
+                                                            <th className="text-right pb-2 font-medium w-32">HARGA</th>
+                                                            <th className="w-10"></th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        {group.items.map((item) => (
+                                                            <tr key={item.id}>
+                                                                <td className="py-1.5 pr-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={item.model}
+                                                                        onChange={(e) => updateItem(group.id, item.id, 'model', e.target.value)}
+                                                                        placeholder="MGP24X"
+                                                                        className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-1.5 pr-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={item.description}
+                                                                        onChange={(e) => updateItem(group.id, item.id, 'description', e.target.value)}
+                                                                        placeholder="Digital Mixer 24CH"
+                                                                        className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-1.5 pr-2">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={item.qty}
+                                                                            onChange={(e) => updateItem(group.id, item.id, 'qty', parseInt(e.target.value) || 0)}
+                                                                            className="w-12 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-center text-text-main dark:text-white"
+                                                                        />
+                                                                        <select
+                                                                            value={item.unit}
+                                                                            onChange={(e) => updateItem(group.id, item.id, 'unit', e.target.value)}
+                                                                            className="w-20 px-1 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-text-main dark:text-white"
+                                                                        >
+                                                                            <option value="unit">unit</option>
+                                                                            <option value="set">set</option>
+                                                                            <option value="pcs">pcs</option>
+                                                                            <option value="lot">lot</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-1.5 pr-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={item.rate ? formatIDR(item.rate) : ''}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value.replace(/[^\d]/g, '');
+                                                                            updateItem(group.id, item.id, 'rate', parseInt(val) || 0);
+                                                                        }}
+                                                                        placeholder="36,000,000"
+                                                                        className="w-full px-2 py-1.5 text-xs bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded text-right text-text-main dark:text-white"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-1.5">
+                                                                    <button onClick={() => removeItem(group.id, item.id)} className="text-text-secondary hover:text-red-500">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                             <button
                                                 onClick={() => addItem(group.id)}
                                                 className="w-full mt-2 py-2 text-xs text-text-secondary hover:text-primary hover:bg-primary/5 rounded border border-dashed border-border-light dark:border-border-dark flex items-center justify-center gap-1"
@@ -1080,7 +1082,6 @@ export default function InvoiceForm() {
                             placeholder="Masukkan syarat dan ketentuan..."
                             className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white resize-none"
                         />
-                        <p className="text-xs text-text-secondary mt-1">Syarat default dimuat dari Pengaturan. Anda dapat mengubahnya per dokumen.</p>
                     </div>
 
                     {/* Bank Selection Card - Only for Quotations */}

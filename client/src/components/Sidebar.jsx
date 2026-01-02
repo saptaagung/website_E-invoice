@@ -10,6 +10,7 @@ import {
     X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -20,6 +21,7 @@ const navItems = [
 
 export default function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuth();
+    const { companyName, logo } = useSettings() || {};
     const navigate = useNavigate();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -43,6 +45,9 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     const userInitials = getInitials(user?.name);
+
+    // Display name with fallback
+    const displayName = companyName || 'InvoiceFlow';
 
     return (
         <>
@@ -88,20 +93,34 @@ export default function Sidebar({ isOpen, onClose }) {
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0
             `}>
-                {/* Logo */}
+                {/* Logo & Company Name */}
                 <div className="p-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-white">
-                            <FileText size={20} />
-                        </div>
-                        <div>
-                            <h1 className="text-text-main dark:text-white text-lg font-bold leading-tight">InvoiceFlow</h1>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Company Logo or Default Icon */}
+                        {logo ? (
+                            <img
+                                src={logo}
+                                alt="Logo"
+                                className="size-8 rounded-lg object-cover flex-shrink-0"
+                            />
+                        ) : (
+                            <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-white flex-shrink-0">
+                                <FileText size={20} />
+                            </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h1
+                                className="text-text-main dark:text-white text-lg font-bold leading-tight truncate"
+                                title={displayName}
+                            >
+                                {displayName}
+                            </h1>
                         </div>
                     </div>
                     {/* Close button for mobile */}
                     <button
                         onClick={onClose}
-                        className="md:hidden p-2 rounded-lg text-text-secondary hover:bg-background-light dark:hover:bg-gray-800 transition-colors"
+                        className="md:hidden p-2 rounded-lg text-text-secondary hover:bg-background-light dark:hover:bg-gray-800 transition-colors flex-shrink-0"
                     >
                         <X size={20} />
                     </button>
@@ -149,16 +168,25 @@ export default function Sidebar({ isOpen, onClose }) {
                         onClick={handleLogoutClick}
                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group"
                     >
-                        <div
-                            className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm"
-                        >
-                            {userInitials}
+                        {/* User Avatar - Show company logo if available */}
+                        {logo ? (
+                            <img
+                                src={logo}
+                                alt="Logo"
+                                className="size-8 rounded-full object-cover flex-shrink-0"
+                            />
+                        ) : (
+                            <div
+                                className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0"
+                            >
+                                {userInitials}
+                            </div>
+                        )}
+                        <div className="flex flex-col flex-1 text-left min-w-0">
+                            <p className="text-sm font-medium text-text-main dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors truncate">{user?.name || 'Pengguna'}</p>
+                            <p className="text-xs text-text-secondary dark:text-gray-400 truncate">{user?.email || ''}</p>
                         </div>
-                        <div className="flex flex-col flex-1 text-left">
-                            <p className="text-sm font-medium text-text-main dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{user?.name || 'Pengguna'}</p>
-                            <p className="text-xs text-text-secondary dark:text-gray-400">{user?.email || ''}</p>
-                        </div>
-                        <div className="text-text-secondary group-hover:text-red-500 transition-colors">
+                        <div className="text-text-secondary group-hover:text-red-500 transition-colors flex-shrink-0">
                             <LogOut size={18} />
                         </div>
                     </button>
@@ -167,5 +195,3 @@ export default function Sidebar({ isOpen, onClose }) {
         </>
     );
 }
-
-

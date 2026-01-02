@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SettingsProvider } from './context/SettingsContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
@@ -27,7 +28,7 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  return children;
+  return <SettingsProvider>{children}</SettingsProvider>;
 }
 
 function AppRoutes() {

@@ -1,21 +1,32 @@
 import { Search, Bell, Menu } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 export default function Header({ onMenuClick }) {
+    const { companyName, logo, loading } = useSettings() || {};
+
+    // Show company name or fallback to InvoiceFlow
+    const displayName = companyName || 'InvoiceFlow';
+
     return (
         <header className="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 md:px-8 py-3 z-10 flex-shrink-0">
             {/* Mobile Menu Button */}
-            <div className="flex items-center gap-4 lg:hidden">
+            <div className="flex items-center gap-4 md:hidden min-w-0 flex-1">
                 <button
                     onClick={onMenuClick}
-                    className="text-text-secondary hover:text-text-main transition-colors"
+                    className="text-text-secondary hover:text-text-main transition-colors flex-shrink-0"
                 >
                     <Menu size={24} />
                 </button>
-                <h2 className="text-lg font-bold text-text-main dark:text-white">InvoiceFlow</h2>
+                <h2
+                    className="text-lg font-bold text-text-main dark:text-white truncate"
+                    title={displayName}
+                >
+                    {displayName}
+                </h2>
             </div>
 
             {/* Desktop Search */}
-            <div className="hidden lg:flex items-center max-w-md w-full">
+            <div className="hidden md:flex items-center max-w-md w-full">
                 <label className="flex items-center w-full bg-background-light dark:bg-gray-800 rounded-xl px-3 py-2 border border-transparent focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
                     <Search size={20} className="text-text-secondary dark:text-gray-400" />
                     <input
@@ -33,11 +44,20 @@ export default function Header({ onMenuClick }) {
                     <span className="absolute top-2.5 right-2.5 size-2 bg-red-500 rounded-full border border-surface-light dark:border-surface-dark"></span>
                 </button>
 
-                {/* Mobile Avatar */}
-                <div
-                    className="lg:hidden size-8 rounded-full bg-cover bg-center"
-                    style={{ backgroundImage: "url('https://api.dicebear.com/7.x/initials/svg?seed=JD')" }}
-                ></div>
+                {/* Mobile Avatar - Show company logo if available */}
+                {logo ? (
+                    <img
+                        src={logo}
+                        alt="Company Logo"
+                        className="md:hidden size-8 rounded-full object-cover border border-border-light dark:border-border-dark"
+                    />
+                ) : (
+                    <div
+                        className="md:hidden size-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold"
+                    >
+                        {displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                )}
             </div>
         </header>
     );

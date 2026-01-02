@@ -107,6 +107,12 @@ export default function Documents() {
     const [pageSize, setPageSize] = useState(20);
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Filter state
+    const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'year'
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [showDateDropdown, setShowDateDropdown] = useState(false);
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+
     // State for documents
     const [quotationsData, setQuotationsData] = useState([]);
     const [invoicesData, setInvoicesData] = useState([]);
@@ -264,10 +270,49 @@ export default function Documents() {
     };
 
     const data = getActiveData();
-    const filteredData = data.filter(item =>
-        item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+
+    // Date filter helper
+    const isWithinDateRange = (dateStr) => {
+        if (dateFilter === 'all') return true;
+        const now = new Date();
+        const itemDate = new Date(dateStr);
+
+        switch (dateFilter) {
+            case 'today':
+                return itemDate.toDateString() === now.toDateString();
+            case 'week': {
+                const weekAgo = new Date(now);
+                weekAgo.setDate(now.getDate() - 7);
+                return itemDate >= weekAgo;
+            }
+            case 'month': {
+                const monthAgo = new Date(now);
+                monthAgo.setMonth(now.getMonth() - 1);
+                return itemDate >= monthAgo;
+            }
+            case 'year': {
+                const yearAgo = new Date(now);
+                yearAgo.setFullYear(now.getFullYear() - 1);
+                return itemDate >= yearAgo;
+            }
+            default:
+                return true;
+        }
+    };
+
+    const filteredData = data.filter(item => {
+        // Text search
+        const matchesSearch = item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // Status filter
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+
+        // Date filter
+        const matchesDate = isWithinDateRange(item.date);
+
+        return matchesSearch && matchesStatus && matchesDate;
+    });
 
     // Pagination logic
     const totalPages = Math.ceil(filteredData.length / pageSize);
@@ -311,16 +356,104 @@ export default function Documents() {
                     </div>
                     {/* Quick Filters */}
                     <div className="flex gap-3 flex-wrap justify-center lg:justify-end">
-                        <button className="flex items-center gap-2 px-3 py-2 bg-background-light dark:bg-background-dark text-sm font-medium rounded-xl border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white transition-colors">
-                            <Calendar size={16} />
-                            <span>Tanggal</span>
-                            <ChevronDown size={14} />
-                        </button>
-                        <button className="flex items-center gap-2 px-3 py-2 bg-background-light dark:bg-background-dark text-sm font-medium rounded-xl border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white transition-colors">
-                            <Filter size={16} />
-                            <span>Status</span>
-                            <ChevronDown size={14} />
-                        </button>
+                        {/* Date Filter Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => { setShowDateDropdown(!showDateDropdown); setShowStatusDropdown(false); }}
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${dateFilter !== 'all'
+                                        ? 'bg-primary/10 border-primary text-primary'
+                                        : 'bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white'
+                                    }`}
+                            >
+                                <Calendar size={16} />
+                                <span>
+                                    {dateFilter === 'all' && 'Tanggal'}
+                                    {dateFilter === 'today' && 'Hari Ini'}
+                                    {dateFilter === 'week' && '7 Hari Terakhir'}
+                                    {dateFilter === 'month' && '30 Hari Terakhir'}
+                                    {dateFilter === 'year' && 'Tahun Ini'}
+                                </span>
+                                <ChevronDown size={14} />
+                            </button>
+                            {showDateDropdown && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowDateDropdown(false)} />
+                                    <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-border-light dark:border-border-dark z-50 py-1 overflow-hidden">
+                                        <p className="px-3 py-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">Filter Tanggal</p>
+                                        {[
+                                            { key: 'all', label: 'Semua Tanggal' },
+                                            { key: 'today', label: 'Hari Ini' },
+                                            { key: 'week', label: '7 Hari Terakhir' },
+                                            { key: 'month', label: '30 Hari Terakhir' },
+                                            { key: 'year', label: 'Tahun Ini' },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.key}
+                                                onClick={() => { setDateFilter(option.key); setShowDateDropdown(false); setCurrentPage(1); }}
+                                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-background-light dark:hover:bg-gray-700 transition-colors ${option.key === dateFilter ? 'bg-primary/10 text-primary font-medium' : 'text-text-main dark:text-white'
+                                                    }`}
+                                            >
+                                                {option.key === dateFilter && <Check size={14} />}
+                                                <span>{option.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Status Filter Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => { setShowStatusDropdown(!showStatusDropdown); setShowDateDropdown(false); }}
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${statusFilter !== 'all'
+                                        ? 'bg-primary/10 border-primary text-primary'
+                                        : 'bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white'
+                                    }`}
+                            >
+                                <Filter size={16} />
+                                <span className="capitalize">{statusFilter === 'all' ? 'Status' : statusFilter}</span>
+                                <ChevronDown size={14} />
+                            </button>
+                            {showStatusDropdown && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowStatusDropdown(false)} />
+                                    <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-border-light dark:border-border-dark z-50 py-1 overflow-hidden">
+                                        <p className="px-3 py-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">Filter Status</p>
+                                        <button
+                                            onClick={() => { setStatusFilter('all'); setShowStatusDropdown(false); setCurrentPage(1); }}
+                                            className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-background-light dark:hover:bg-gray-700 transition-colors ${statusFilter === 'all' ? 'bg-primary/10 text-primary font-medium' : 'text-text-main dark:text-white'
+                                                }`}
+                                        >
+                                            {statusFilter === 'all' && <Check size={14} />}
+                                            <span>Semua Status</span>
+                                        </button>
+                                        {(activeTab === 'invoices' ? invoiceStatuses : quotationStatuses).map((status) => (
+                                            <button
+                                                key={status}
+                                                onClick={() => { setStatusFilter(status); setShowStatusDropdown(false); setCurrentPage(1); }}
+                                                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-background-light dark:hover:bg-gray-700 transition-colors ${status === statusFilter ? 'bg-primary/10 text-primary font-medium' : 'text-text-main dark:text-white'
+                                                    }`}
+                                            >
+                                                {status === statusFilter && <Check size={14} />}
+                                                <span className="capitalize">{status}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Clear Filters Button */}
+                        {(dateFilter !== 'all' || statusFilter !== 'all') && (
+                            <button
+                                onClick={() => { setDateFilter('all'); setStatusFilter('all'); setCurrentPage(1); }}
+                                className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                                <X size={14} />
+                                <span>Hapus Filter</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
