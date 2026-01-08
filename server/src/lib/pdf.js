@@ -101,7 +101,9 @@ export function generateInvoicePDF(invoice, companySettings) {
             doc.font('Helvetica-Bold').fontSize(18).fillColor(PRIMARY_COLOR)
                 .text(companySettings?.companyName || 'My Company', textX, y, { width: maxAddrWidth });
 
-            let infoY = y + 25;
+            // Calculate actual height of company name to prevent overlap
+            const companyNameHeight = doc.heightOfString(companySettings?.companyName || 'My Company', { width: maxAddrWidth });
+            let infoY = y + companyNameHeight + 5;
             doc.font('Helvetica').fontSize(8).fillColor(TEXT_SECONDARY);
             doc.text(companySettings?.address || '', textX, infoY, { width: maxAddrWidth });
             const addrHeight = doc.heightOfString(companySettings?.address || '', { width: maxAddrWidth });
@@ -333,7 +335,9 @@ export function generateQuotationPDF(quotation, companySettings) {
             doc.font('Helvetica-Bold').fontSize(18).fillColor(PRIMARY_COLOR)
                 .text(companySettings?.companyName || 'My Company', textX, y, { width: maxAddrWidth });
 
-            let infoY = y + 25;
+            // Calculate actual height of company name to prevent overlap
+            const companyNameHeight = doc.heightOfString(companySettings?.companyName || 'My Company', { width: maxAddrWidth });
+            let infoY = y + companyNameHeight + 5;
             doc.font('Helvetica').fontSize(8).fillColor(TEXT_SECONDARY);
             doc.text(companySettings?.address || '', textX, infoY, { width: maxAddrWidth });
             // Calculate height of address to push down email/phone
