@@ -14,7 +14,10 @@ const formatIDR = (amount) => {
 
 // Format date helper
 const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 // Get initials from name
@@ -133,7 +136,7 @@ export default function Documents() {
                 // Transform data for display
                 setQuotationsData(quotationsRes.map(q => ({
                     id: q.id,
-                    displayId: q.quotationNumber,
+                    displayId: q.quotationNumber || q.quotation_number || '—',
                     client: q.client?.name || 'Unknown',
                     initials: getInitials(q.client?.name),
                     color: getColor(q.client?.name),

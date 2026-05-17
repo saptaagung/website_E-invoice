@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation';
 import { FileText, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getSupabaseConfigError } from '@/utils/supabase/keys';
 
 export default function Register() {
     const router = useRouter();
     const { register } = useAuth();
+    const configError = getSupabaseConfigError();
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -63,6 +65,11 @@ export default function Register() {
                 {/* Register Card */}
                 <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-xl p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {configError && (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
+                                {configError}
+                            </div>
+                        )}
                         {/* Error Message */}
                         {error && (
                             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import Link from 'next/link'
 import { useParams, usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Save, Send, Download, Plus, Trash2, X, Check, ChevronDown, ChevronRight, Edit } from 'lucide-react';
@@ -22,8 +22,14 @@ const numberToWords = (num) => {
 };
 
 const terbilang = (amount) => {
-    if (amount === 0) return 'Nol Rupiah';
-    return numberToWords(Math.floor(amount)) + ' Rupiah';
+    const n = Number(amount);
+    if (!Number.isFinite(n) || n <= 0) return 'Nol Rupiah';
+    return numberToWords(Math.floor(n)) + ' Rupiah';
+};
+
+const toNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
 };
 
 // Default company settings (empty - will be populated from API)
@@ -56,7 +62,7 @@ export default function InvoiceForm() {
     const { id } = useParams();
     const pathname = usePathname();
     const router = useRouter();
-    const [searchParams] = useSearchParams();
+    const searchParams = useSearchParams();
     const isNew = pathname.includes('/new');
     const isViewOnly = searchParams.get('view') === 'true';
 
@@ -366,6 +372,27 @@ export default function InvoiceForm() {
                 if (clientsData && clientsData.length > 0) {
                     setClientsList(clientsData);
                 }
+
+                // New document: default one item row (skip if prefilled e.g. from quotation)
+                if (isNew && !id) {
+                    setItemGroups((prev) =>
+                        prev.length > 0
+                            ? prev
+                            : [{
+                                id: Date.now(),
+                                name: '',
+                                expanded: true,
+                                items: [{
+                                    id: Date.now() + 1,
+                                    model: '',
+                                    description: '',
+                                    qty: 1,
+                                    unit: 'unit',
+                                    rate: 0,
+                                }],
+                            }],
+                    );
+                }
             } catch (err) {
                 console.error('Failed to fetch data:', err);
             } finally {
@@ -373,12 +400,13 @@ export default function InvoiceForm() {
             }
         };
         fetchData();
-    }, [isNew]);
+    }, [isNew, id, docType]);
 
     // Calculate totals
-    const subtotal = itemGroups.reduce((sum, group) =>
-        sum + group.items.reduce((gSum, item) => gSum + (item.qty * item.rate), 0)
-        , 0);
+    const subtotal = itemGroups.reduce((sum, group) => {
+        const items = group.items ?? [];
+        return sum + items.reduce((gSum, item) => gSum + toNum(item.qty) * toNum(item.rate), 0);
+    }, 0);
     const discountAmount = subtotal * (formData.discountPercent / 100);
     const afterDiscount = subtotal - discountAmount;
     const taxAmount = formData.applyTax ? afterDiscount * (formData.taxRate / 100) : 0;
@@ -480,7 +508,9 @@ export default function InvoiceForm() {
         if (!formData.selectedClient && !clientSearch.trim()) missing.push('Customer');
         if (!formData.date) missing.push('Date');
         if (itemGroups.length === 0) missing.push('Items');
-        const hasValidItems = itemGroups.some(g => g.items.some(i => i.description && i.qty > 0 && i.rate > 0));
+        const hasValidItems = itemGroups.some(g =>
+            (g.items ?? []).some(i => i.description && toNum(i.qty) > 0 && toNum(i.rate) > 0)
+        );
         if (!hasValidItems) missing.push('At least one valid item (with description, qty, and rate)');
         if (!formData.signatureName) missing.push('Signature Name');
         // For quotations, bank account is recommended but not strictly required per user request
@@ -546,7 +576,7 @@ export default function InvoiceForm() {
         try {
             // Flatten items for API
             const flatItems = itemGroups.flatMap(group =>
-                group.items.map(item => ({
+                (group.items ?? []).map(item => ({
                     groupName: group.name,
                     model: item.model,
                     description: item.description,
@@ -559,6 +589,7 @@ export default function InvoiceForm() {
             const documentData = {
                 clientId: clientForDocument?.id || null,
                 issueDate: formData.date,
+                validUntil: formData.validUntil || formData.date,
                 status: targetStatus,
                 poNumber: formData.poNumber,
                 notes: formData.introText,
@@ -591,6 +622,8 @@ export default function InvoiceForm() {
                     }
                 }
 
+                setSavedJustNow(true);
+                setTimeout(() => setSavedJustNow(false), 3000);
                 router.push('/quotations');
             } else {
                 if (isNew) {
@@ -608,11 +641,10 @@ export default function InvoiceForm() {
                     }
                 }
 
+                setSavedJustNow(true);
+                setTimeout(() => setSavedJustNow(false), 3000);
                 router.push('/invoices');
             }
-
-            setSavedJustNow(true);
-            setTimeout(() => setSavedJustNow(false), 3000);
         } catch (err) {
             console.error('Failed to save:', err);
             setError(err.message || 'Failed to save document');
@@ -966,7 +998,7 @@ export default function InvoiceForm() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {group.items.map((item) => (
+                                                        {(group.items ?? []).map((item) => (
                                                             <tr key={item.id}>
                                                                 <td className="py-1.5 pr-2">
                                                                     <input
@@ -1218,25 +1250,25 @@ export default function InvoiceForm() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {itemGroups.map(group => (
-                                            <>
-                                                {group.name && (
-                                                    <tr key={`group-${group.id}`}>
+                                        {itemGroups.map((group) => (
+                                            <Fragment key={group.id}>
+                                                {group.name ? (
+                                                    <tr>
                                                         <td colSpan={5} className="border border-slate-300 px-2 py-1 font-bold text-slate-800 bg-slate-50">
                                                             {group.name}
                                                         </td>
                                                     </tr>
-                                                )}
-                                                {group.items.slice(0, 5).map(item => (
+                                                ) : null}
+                                                {(group.items ?? []).slice(0, 5).map((item) => (
                                                     <tr key={item.id}>
                                                         <td className="border border-slate-300 px-2 py-1">{item.model}</td>
                                                         <td className="border border-slate-300 px-2 py-1">{item.description}</td>
                                                         <td className="border border-slate-300 px-2 py-1 text-center">{item.qty} {item.unit}</td>
-                                                        <td className="border border-slate-300 px-2 py-1 text-right">Rp{formatIDR(item.rate)}</td>
-                                                        <td className="border border-slate-300 px-2 py-1 text-right">{formatIDR(item.qty * item.rate)}</td>
+                                                        <td className="border border-slate-300 px-2 py-1 text-right">Rp{formatIDR(toNum(item.rate))}</td>
+                                                        <td className="border border-slate-300 px-2 py-1 text-right">{formatIDR(toNum(item.qty) * toNum(item.rate))}</td>
                                                     </tr>
                                                 ))}
-                                            </>
+                                            </Fragment>
                                         ))}
                                     </tbody>
                                 </table>

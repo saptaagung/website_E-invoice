@@ -7,8 +7,8 @@ import { getSupabase, requireUserId } from "@/lib/supabase/get-client";
 const mapBankAccount = (acc: Record<string, unknown>) => ({
   id: acc.id,
   bankName: acc.bankName ?? acc.bank_name,
-  accountNumber: acc.accountNumber ?? acc.account_num,
-  accountHolder: acc.accountHolder ?? acc.holder_name,
+  accountNumber: acc.accountNumber ?? acc.accountNum ?? acc.account_num,
+  accountHolder: acc.accountHolder ?? acc.holderName ?? acc.holder_name,
   isDefault: acc.isDefault ?? acc.is_default,
 });
 
@@ -426,9 +426,10 @@ export const quotations = {
     const taxAmount = (subtotal - discountAmount) * (tax / 100);
     const total = subtotal - discountAmount + taxAmount;
 
-    let nextNum = settings.sph_next_num ?? 1;
-    const padding = settings.sph_padding ?? 4;
-    const prefix = settings.sph_prefix ?? "SPH/{YYYY}/";
+    const settingsRow = settings as Record<string, unknown>;
+    let nextNum = Number(settingsRow.sph_next_num ?? settingsRow.sphNextNum ?? 1) || 1;
+    const padding = Number(settingsRow.sph_padding ?? settingsRow.sphPadding ?? 4) || 4;
+    const prefix = String(settingsRow.sph_prefix ?? settingsRow.sphPrefix ?? "SPH/{YYYY}/");
     let quotationNumber = "";
     for (let i = 0; i < 100; i++) {
       quotationNumber = formatDocNumber(prefix, nextNum, padding);
@@ -465,10 +466,10 @@ export const quotations = {
       .single();
     if (error) throw new Error(error.message);
 
-    await supabase.from("quotation_items").insert(
+    const { error: itemsError } = await supabase.from("quotation_items").insert(
       items.map((item) => {
-        const rate = Number(item.rate ?? item.unitPrice ?? 0);
-        const qty = Number(item.quantity ?? 1);
+        const rate = Number(item.rate ?? item.unitPrice ?? 0) || 0;
+        const qty = Number(item.quantity ?? 1) || 1;
         return {
           quotation_id: quotation.id,
           group_name: item.groupName ?? null,
@@ -481,6 +482,8 @@ export const quotations = {
         };
       }),
     );
+    if (itemsError) throw new Error(itemsError.message);
+
     await supabase.from("company_settings").update({ sph_next_num: nextNum + 1 }).eq("user_id", userId);
     return quotations.getOne(quotation.id);
   },
