@@ -329,12 +329,11 @@ export default function Documents() {
     return (
         <div className="flex flex-col gap-6 pb-10">
             {/* Main Card */}
-            <div className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col min-h-[600px]">
-                {/* Card Header / Tabs */}
-                {/* Card Header - Title Only (Tabs Removed) */}
+            <div className="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark flex flex-col min-h-[600px]">
+                {/* Card Header */}
                 <div className="border-b border-border-light dark:border-border-dark px-6 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center pt-4 pb-3">
-                        <h1 className="text-lg font-bold text-text-main dark:text-white">
+                        <h1 className="text-lg font-semibold text-text-main dark:text-white">
                             {isQuotationsPage ? 'Penawaran' : (isInvoicesPage ? 'Faktur' : 'Dokumen')}
                         </h1>
                     </div>
@@ -357,7 +356,7 @@ export default function Documents() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Cari berdasarkan klien atau ID..."
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-text-secondary"
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-text-secondary"
                         />
                     </div>
                     {/* Quick Filters */}
@@ -366,8 +365,8 @@ export default function Documents() {
                         <div className="relative">
                             <button
                                 onClick={() => { setShowDateDropdown(!showDateDropdown); setShowStatusDropdown(false); }}
-                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${dateFilter !== 'all'
-                                        ? 'bg-primary/10 border-primary text-primary'
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${dateFilter !== 'all'
+                                        ? 'bg-primary/5 border-primary text-primary'
                                         : 'bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white'
                                     }`}
                             >
@@ -412,8 +411,8 @@ export default function Documents() {
                         <div className="relative">
                             <button
                                 onClick={() => { setShowStatusDropdown(!showStatusDropdown); setShowDateDropdown(false); }}
-                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl border transition-colors ${statusFilter !== 'all'
-                                        ? 'bg-primary/10 border-primary text-primary'
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${statusFilter !== 'all'
+                                        ? 'bg-primary/5 border-primary text-primary'
                                         : 'bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white'
                                     }`}
                             >
@@ -479,29 +478,29 @@ export default function Documents() {
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
                             {paginatedData.map((item) => (
                                 <tr key={item.id} className="group hover:bg-background-light dark:hover:bg-background-dark/30 transition-colors">
-                                    <td className="py-4 px-6">
+                                    <td className="py-3 px-6">
                                         <button
                                             onClick={() => handleView(item)}
-                                            className="text-primary font-semibold text-sm hover:underline"
+                                            className="text-primary font-medium text-sm hover:underline"
                                         >
                                             #{item.displayId || item.id}
                                         </button>
                                     </td>
-                                    <td className="py-4 px-6">
+                                    <td className="py-3 px-6">
                                         <div className="flex items-center gap-3">
-                                            <div className={`size-8 rounded-full ${item.color} flex items-center justify-center text-xs font-bold`}>
+                                            <div className={`size-8 rounded-full ${item.color} flex items-center justify-center text-xs font-medium`}>
                                                 {item.initials}
                                             </div>
                                             <span className="text-sm font-medium text-text-main dark:text-white">{item.client}</span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-6">
+                                    <td className="py-3 px-6">
                                         <span className="text-sm text-text-secondary dark:text-gray-400">{item.date}</span>
                                     </td>
-                                    <td className="py-4 px-6">
-                                        <span className="text-sm font-bold text-text-main dark:text-white">{formatIDR(item.amount)}</span>
+                                    <td className="py-3 px-6">
+                                        <span className="text-sm font-semibold tabular-nums text-text-main dark:text-white">{formatIDR(item.amount)}</span>
                                     </td>
-                                    <td className="py-4 px-6">
+                                    <td className="py-3 px-6">
                                         <StatusDropdown
                                             currentStatus={item.status}
                                             statuses={getStatusOptions(item)}

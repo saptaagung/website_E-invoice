@@ -41,6 +41,10 @@ export function isValidSupabaseUrl(url: string): boolean {
   if (!url) return false;
   try {
     const parsed = new URL(url);
+    // Allow local development URL
+    if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    }
     return (
       parsed.protocol === "https:" &&
       parsed.hostname.endsWith(".supabase.co") &&

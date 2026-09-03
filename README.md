@@ -47,6 +47,10 @@ website_E-invoice/
 - **Pengaturan** — profil perusahaan, logo, bank, pajak, penomoran dokumen
 - **Autentikasi** — register/login per pengguna (data terisolasi via RLS)
 
+## Deploy (step-by-step)
+
+Panduan lengkap: **[DEPLOYMENT.md](DEPLOYMENT.md)** — Supabase → Vercel → checklist uji coba.
+
 ## Prasyarat
 
 - **Node.js** 18+
@@ -64,18 +68,27 @@ website_E-invoice/
 
 ## Development lokal
 
+File **`.env.local`** ada di root project (sudah disiapkan, tidak ikut Git). Isi dengan kredensial **project Supabase yang sama** yang dipakai production.
+
+1. Supabase → **Project Settings** → **API**
+2. Salin **Project URL** dan **publishable** (atau **anon**) key ke `.env.local`
+3. Jalankan:
+
 ```bash
-git clone <repository-url>
 cd website_E-invoice
-
-cp .env.example .env.local
-# Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
 npm install
 npm run dev
 ```
 
 Buka [http://localhost:3000](http://localhost:3000) → daftar di `/register`, lalu login.
+
+Jika belum ada `.env.local`, salin dari contoh:
+
+```bash
+cp .env.example .env.local
+```
+
+Setelah mengubah `.env.local`, **restart** `npm run dev` (wajib).
 
 ## Environment variables
 

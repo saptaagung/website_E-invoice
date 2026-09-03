@@ -100,7 +100,7 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                     {/* Address */}
                     <section>
                         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Alamat Penagihan</h3>
-                        <div className="flex items-start gap-3 p-4 rounded-xl bg-background-light dark:bg-gray-800/50 border border-border-light dark:border-border-dark">
+                        <div className="flex items-start gap-3 p-4 rounded-lg bg-background-light dark:bg-gray-800/50 border border-border-light dark:border-border-dark">
                             <MapPin size={20} className="mt-0.5 text-text-secondary" />
                             <div>
                                 <p className="text-sm text-text-main dark:text-gray-300 leading-relaxed">
@@ -118,11 +118,11 @@ function ClientDrawer({ client, onClose, onUpdate }) {
                     <section>
                         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">Activity</h3>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-gray-800">
+                            <div className="p-3 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800">
                                 <p className="text-xs text-text-secondary">Total Invoices</p>
                                 <p className="text-lg font-bold text-text-main dark:text-white mt-1">{client._count?.invoices || 0}</p>
                             </div>
-                            <div className="p-3 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-gray-800">
+                            <div className="p-3 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800">
                                 <p className="text-xs text-text-secondary">Total Quotations</p>
                                 <p className="text-lg font-bold text-text-main dark:text-white mt-1">{client._count?.quotations || 0}</p>
                             </div>

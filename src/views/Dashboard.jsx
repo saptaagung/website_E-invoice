@@ -117,11 +117,11 @@ export default function Dashboard() {
     }, []);
 
     return (
-        <div className="flex flex-col gap-8 pb-10 max-w-[1200px] mx-auto">
+        <div className="flex flex-col gap-6 pb-10">
             {/* Welcome & Actions Row */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-text-main dark:text-white tracking-tight">Dashboard</h2>
+                    <h2 className="text-xl font-semibold text-text-main dark:text-white tracking-tight">Dashboard</h2>
                     <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">Ringkasan aktivitas keuangan Anda.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -137,7 +137,7 @@ export default function Dashboard() {
             {/* Action-Focused KPI Cards - Enhanced Design */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
                 {/* Drafts Card */}
-                <div className="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
+                <div className="bg-surface-light dark:bg-surface-dark rounded-lg p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
                     {/* Background Icon */}
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <FileEdit size={100} />
@@ -153,12 +153,12 @@ export default function Dashboard() {
                             <Inbox size={16} className="text-red-400" />
                             <span className="text-xs text-text-secondary">Perlu Tindakan</span>
                         </div>
-                        <h3 className="text-3xl font-bold text-text-main dark:text-white">{loading ? '...' : stats.draftsCount}</h3>
+                        <h3 className="text-3xl font-semibold text-text-main dark:text-white">{loading ? '...' : stats.draftsCount}</h3>
                     </div>
                 </div>
 
                 {/* Unpaid Invoices Card */}
-                <div className="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
+                <div className="bg-surface-light dark:bg-surface-dark rounded-lg p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
                     {/* Background Icon */}
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <DollarSign size={100} />
@@ -178,12 +178,12 @@ export default function Dashboard() {
                             <AlertTriangle size={16} className="text-orange-500" />
                             <span className="text-xs text-text-secondary">Tagihan Belum Dibayar</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-text-main dark:text-white tracking-tight">{loading ? '...' : formatIDR(stats.unpaidAmount)}</h3>
+                        <h3 className="text-2xl font-semibold text-text-main dark:text-white tracking-tight">{loading ? '...' : formatIDR(stats.unpaidAmount)}</h3>
                     </div>
                 </div>
 
                 {/* Awaiting Response Card */}
-                <div className="bg-surface-light dark:bg-surface-dark rounded-xl p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
+                <div className="bg-surface-light dark:bg-surface-dark rounded-lg p-5 border border-border-light dark:border-border-dark flex flex-col justify-between h-40 relative overflow-hidden group">
                     {/* Background Icon */}
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <Clock size={100} />
@@ -199,26 +199,26 @@ export default function Dashboard() {
                             <Hourglass size={16} className="text-yellow-500" />
                             <span className="text-xs text-text-secondary">Menunggu Respon</span>
                         </div>
-                        <h3 className="text-3xl font-bold text-text-main dark:text-white">{loading ? '...' : stats.awaitingResponseCount}</h3>
+                        <h3 className="text-3xl font-semibold text-text-main dark:text-white">{loading ? '...' : stats.awaitingResponseCount}</h3>
                     </div>
                 </div>
             </div>
 
             {/* Stats Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                 {/* Quotation Stats */}
-                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <FileText size={20} className="text-blue-500" />
-                            <h3 className="font-bold text-text-main dark:text-white">Penawaran</h3>
+                            <FileText size={18} className="text-blue-500" />
+                            <h3 className="font-semibold text-text-main dark:text-white">Penawaran</h3>
                         </div>
                         <Link href="/quotations" className="text-xs text-blue-500 hover:text-blue-400">Lihat semua</Link>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="flex justify-between items-center pb-3 border-b border-border-light dark:border-border-dark">
                             <span className="text-sm text-text-secondary">Total</span>
-                            <span className="text-sm font-bold text-text-main dark:text-white">{loading ? '...' : stats.quotationStats.total}</span>
+                            <span className="text-sm font-semibold text-text-main dark:text-white">{loading ? '...' : stats.quotationStats.total}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2">
@@ -259,18 +259,18 @@ export default function Dashboard() {
                 </div>
 
                 {/* Invoice Stats */}
-                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <Receipt size={20} className="text-green-500" />
-                            <h3 className="font-bold text-text-main dark:text-white">Faktur</h3>
+                            <Receipt size={18} className="text-green-500" />
+                            <h3 className="font-semibold text-text-main dark:text-white">Faktur</h3>
                         </div>
                         <Link href="/invoices" className="text-xs text-blue-500 hover:text-blue-400">Lihat semua</Link>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="flex justify-between items-center pb-3 border-b border-border-light dark:border-border-dark">
                             <span className="text-sm text-text-secondary">Total</span>
-                            <span className="text-sm font-bold text-text-main dark:text-white">{loading ? '...' : stats.invoiceStats.total}</span>
+                            <span className="text-sm font-semibold text-text-main dark:text-white">{loading ? '...' : stats.invoiceStats.total}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <div className="flex items-center gap-2">
@@ -321,11 +321,11 @@ export default function Dashboard() {
             {/* Recent Documents Section */}
             <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between px-1">
-                    <h3 className="text-lg font-bold text-text-main dark:text-white">Dokumen Terbaru</h3>
+                    <h3 className="text-lg font-semibold text-text-main dark:text-white">Dokumen Terbaru</h3>
                     <Link href="/invoices" className="text-sm font-medium text-blue-500 hover:text-blue-400">Lihat semua</Link>
                 </div>
 
-                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>

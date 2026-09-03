@@ -78,7 +78,7 @@ export default function NewInvoiceSelector() {
                     {/* Option 1: From Quotation */}
                     <button
                         onClick={() => setStep('choose-quotation')}
-                        className="bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-primary/20 hover:border-primary p-8 text-left transition-all group hover:shadow-lg"
+                        className="bg-surface-light dark:bg-surface-dark rounded-lg border border-primary/20 hover:border-primary p-8 text-left transition-all group hover:shadow-md"
                     >
                         <div className="size-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <Copy size={28} />
@@ -96,7 +96,7 @@ export default function NewInvoiceSelector() {
                     {/* Option 2: Standalone */}
                     <Link
                         href="/invoices/new?type=standalone"
-                        className="bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-border-light dark:border-border-dark hover:border-primary/50 p-8 text-left transition-all group hover:shadow-lg"
+                        className="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark hover:border-primary/50 p-8 text-left transition-all group hover:shadow-md"
                     >
                         <div className="size-14 rounded-xl bg-slate-100 dark:bg-slate-800 text-text-secondary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                             <Plus size={28} />

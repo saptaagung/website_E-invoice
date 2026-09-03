@@ -43,72 +43,66 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background-light to-blue-50 dark:from-background-dark dark:via-background-dark dark:to-gray-900 flex items-center justify-center p-4">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
-            </div>
-
-            <div className="w-full max-w-md relative">
+        <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-background-dark dark:to-gray-900 flex items-center justify-center p-4">
+            <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center gap-3 mb-4">
-                        <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30">
-                            <FileText size={28} />
+                        <div className="size-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                            <FileText size={22} />
                         </div>
                     </div>
-                    <h1 className="text-2xl font-bold text-text-main dark:text-white">Buat akun Anda</h1>
-                    <p className="text-text-secondary mt-2">Kelola faktur Anda mulai hari ini</p>
+                    <h1 className="text-xl font-semibold text-text-main dark:text-white">Buat akun Anda</h1>
+                    <p className="text-text-secondary text-sm mt-1">Kelola faktur Anda mulai hari ini</p>
                 </div>
 
                 {/* Register Card */}
-                <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-xl p-8">
+                <div className="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark shadow-sm p-6 sm:p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {configError && (
-                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
+                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
                                 {configError}
                             </div>
                         )}
                         {/* Error Message */}
                         {error && (
-                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
                                 {error}
                             </div>
                         )}
                         {/* Name */}
                         <div>
-                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">
                                 Nama Lengkap
                             </label>
                             <input
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="John Doe"
+                                placeholder="Nama Anda"
                                 required
-                                className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-xl text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                             />
                         </div>
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
-                                Alamat Email
+                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">
+                                Email
                             </label>
                             <input
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                placeholder="you@company.com"
+                                placeholder="nama@perusahaan.com"
                                 required
-                                className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-xl text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                             />
                         </div>
 
                         {/* Password */}
                         <div>
-                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">
                                 Kata Sandi
                             </label>
                             <div className="relative">
@@ -116,24 +110,24 @@ export default function Register() {
                                     type={showPassword ? 'text' : 'password'}
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    placeholder="••••••••"
+                                    placeholder="Minimal 8 karakter"
                                     required
                                     minLength={8}
-                                    className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-xl text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-12"
+                                    className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-10"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-main transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-main dark:hover:text-white transition-colors"
                                 >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
                         </div>
 
                         {/* Confirm Password */}
                         <div>
-                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-text-main dark:text-gray-300 mb-1.5">
                                 Konfirmasi Kata Sandi
                             </label>
                             <input
@@ -142,7 +136,7 @@ export default function Register() {
                                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                 placeholder="••••••••"
                                 required
-                                className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-xl text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                className="w-full px-3 py-2.5 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg text-sm text-text-main dark:text-white placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                             />
                         </div>
 
@@ -168,11 +162,11 @@ export default function Register() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3 px-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-2.5 px-4 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
-                                    <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     Membuat akun...
                                 </>
                             ) : (
@@ -183,9 +177,9 @@ export default function Register() {
                 </div>
 
                 {/* Sign In Link */}
-                <p className="text-center mt-6 text-text-secondary">
+                <p className="text-center mt-5 text-sm text-text-secondary">
                     Sudah punya akun?{' '}
-                    <Link href="/login" className="text-primary hover:text-primary-dark font-semibold">
+                    <Link href="/login" className="text-primary hover:text-primary-dark font-medium">
                         Masuk
                     </Link>
                 </p>
